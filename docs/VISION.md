@@ -2,17 +2,56 @@
 
 ## What the suite should do
 
-- **Simulate** the chain from neural activity through biochemical pathways
-  and blood flow to the measured signal (fMRI BOLD first; also LDF,
-  electrophysiology and optical imaging), with parameters that have
-  physiological meaning.
-- **Analyse real data** in the same framework, reusing NeuroAnalyzer's
-  readers and analyses where possible.
-- **Combine the two**: fit models to recordings, compare predictions with
-  measurements, and test how well an analysis recovers known physiology
-  (simulated ground truth).
-- Compared with general-purpose tools such as Brainstorm, the emphasis is on
-  physiology and interpretation, not only on signal processing.
+Explain the fMRI signal (and other hemodynamic and electrophysiological
+signals) from the physiology that produces it, in health and disease, at two
+linked levels of detail:
+
+1. **Detailed level: a 3D microvascular network.** Circulation modelled on a
+   realistic vascular graph: nodes (bifurcations, vessel points) and edges
+   (vessel segments) in 3D, each carrying geometry (diameter, length, wall),
+   vessel type (pial and penetrating arterioles, precapillary arterioles,
+   capillaries, venules, veins) and cortical depth and layer. Built from
+   reconstructed networks or generated synthetically. Blood flow, pressure,
+   hematocrit and rheology, vessel mechanics, oxygen transport and the
+   measured signal are all computed on this graph.
+2. **Biochemical pathways that depend on layer and vessel type.** Cell
+   populations (excitatory and inhibitory neurons and their subtypes,
+   astrocytes, pericytes, smooth muscle, endothelium) are placed according to
+   laminar cell densities. Their vasoactive and metabolic signalling (K⁺, NO,
+   prostaglandins, EETs, 20-HETE, adenosine, O₂ consumption, and others) acts
+   on the vessel segments they are near. Which pathway dominates depends on
+   the layer and on the vessel type (e.g., smooth muscle on arterioles,
+   pericytes on capillaries).
+3. **Mesoscopic level: a 2D cortical column.** A reduced model over cortical
+   depth (layers I–VI) and lateral position, with compartments per layer
+   (arteriolar, capillary, venular). Its parameters come from vessel and cell
+   distributions, and are derived from the detailed level by coarse-graining
+   (in the spirit of fitting the parsimonious windkessel to the detailed
+   network in Suarez et al. 2021a). It includes venous drainage across layers
+   and lateral coupling through shared arteries (blood stealing).
+4. **Signal acquisition at both levels.** A detailed forward model of BOLD
+   (intra- and extravascular, field strength, TE, GE vs SE, laminar profiles)
+   computed from the 3D vessel geometry, and a mesoscopic BOLD model for the
+   2D column. Other modalities as well: CBV (VASO), CBF (ASL, LDF), optical
+   imaging and electrophysiology.
+5. **Physiology and pathology as mechanisms.** Each condition (e.g.,
+   neural inhibition, network deactivation, neurovascular or metabolic
+   uncoupling, blood stealing, capillary stalling, occlusion or rarefaction,
+   hematocrit changes, impaired astrocytic signalling, altered vessel walls)
+   is represented at both levels, with its predicted signature across
+   modalities and layers. This is the route to improving what fMRI can
+   detect and to separating mechanisms that look alike in BOLD alone.
+6. **Real data in the same framework.** Fit the mesoscopic model to
+   recordings, use the detailed model as ground truth to test analyses, and
+   reuse NeuroAnalyzer's readers and analyses where possible.
+
+The owner's published models are the **baseline and context**, not the
+target: they show the approach (detailed model → parsimonious model →
+inference from data) that the suite generalises to 3D, layers and many
+pathways.
+
+Compared with general-purpose tools such as Brainstorm, the emphasis is on
+physiology and interpretation, not only on signal processing.
 
 ## The owner's papers (open access in PubMed Central)
 
@@ -34,6 +73,7 @@
 
 Author initials other than the owner's are as listed in PubMed; check them
 when citing. The owner may add papers not indexed in PubMed.
+[background.md](background.md) summarises these papers.
 
 ## Research code
 
@@ -42,21 +82,30 @@ e.g. `legacy/biochemical`, `legacy/flow`, `legacy/fmri`), without lab data.
 
 ## Order of work
 
-1. **Read the owner's papers** and write a short summary of the physiological
-   framework, the models used and the open questions (`docs/background.md`),
-   to be corrected by the owner.
-2. **Review the owner's existing code** (biochemical pathway simulations,
-   flow dynamics, fMRI) and map it onto the chain above.
-3. **Decide the architecture**: language (MATLAB like the existing code,
-   unless there is a strong reason otherwise), module boundaries (neural →
-   biochemical → vascular → acquisition), a common data format shared with
-   NeuroAnalyzer, and how models are tested (synthetic ground truth, as in
-   NeuroAnalyzer's `DemoData`).
-4. **First vertical slice**: one stimulus through the whole chain to a
-   simulated BOLD signal, with tests, before widening any single stage.
+1. **Read the owner's papers** and summarise the framework, models and open
+   questions (`docs/background.md`), to be corrected by the owner.
+2. **Review the owner's existing code** and map it onto the levels above.
+3. **Survey the literature the suite builds on**: vascular graph
+   reconstructions and synthetic network generation, laminar vessel and cell
+   densities, network flow and rheology, oxygen transport, detailed BOLD
+   simulation from vessel geometry, laminar BOLD models, and layer-specific
+   neurovascular coupling.
+4. **Decide the architecture**: language and performance needs (3D networks
+   with many segments, sparse solvers, possibly Monte Carlo MR simulation),
+   the graph data model, module boundaries (network → flow → pathways →
+   oxygen → signal; detailed ↔ mesoscopic), a common data format shared with
+   NeuroAnalyzer, and how models are tested (analytic cases and synthetic
+   ground truth).
+5. **First vertical slice**: one cortical column, one stimulus, detailed
+   network to a laminar BOLD profile, then its coarse-grained 2D column
+   reproducing it, with tests, before widening any single stage.
 
 ## Open decisions
 
-- Language and toolboxes (after seeing the existing code).
+- Species for the first column (mouse, where reconstructed networks and the
+  owner's optogenetic and LDF data exist, or human, the fMRI target).
+- Language and toolboxes (MATLAB like the existing code, or Python or Julia
+  for large sparse graphs and GPU simulation).
+- Sources of vascular networks and laminar cell densities.
 - Licence and when to make the repository public.
 - Which papers and datasets define the first validation targets.
