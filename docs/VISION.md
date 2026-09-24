@@ -21,7 +21,14 @@ linked levels of detail:
    prostaglandins, EETs, 20-HETE, adenosine, O₂ consumption, and others) acts
    on the vessel segments they are near. Which pathway dominates depends on
    the layer and on the vessel type (e.g., smooth muscle on arterioles,
-   pericytes on capillaries).
+   pericytes on capillaries). The owner's astrocyte NVC model (Suarez et al.
+   2025) is one of these pathway modules. **Signals also travel along the
+   graph**: capillary endothelial cells sense neuronal activity (e.g., K⁺
+   through Kir2.1) and the resulting hyperpolarization spreads upstream
+   through endothelial gap junctions to dilate the feeding arterioles (the
+   Nelson group's model), with contractile and thin-strand pericytes acting
+   at the arteriole–capillary transition. So the graph carries membrane
+   potential and electrical coupling on its edges, not only flow.
 3. **Mesoscopic level: a 2D cortical column.** A reduced model over cortical
    depth (layers I–VI) and lateral position, with compartments per layer
    (arteriolar, capillary, venular). Its parameters come from vessel and cell
