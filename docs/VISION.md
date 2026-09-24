@@ -1,5 +1,27 @@
 # Vision and first steps
 
+## The product
+
+**A real application for testing all kinds of experimental brain data
+against physiological models, in both directions:**
+
+- **Forward problem:** physiology → model → the signal each instrument
+  records: BOLD (any field strength, TE, GE or SE), CBF (ASL, LDF, laser
+  speckle), CBV (VASO), optical imaging, Ca²⁺ imaging, LFP and EEG. All
+  parameters and the ground truth are known.
+- **Inverse problem:** recorded data → the physiology that produced it.
+  This covers parameter estimation with uncertainty, comparison of
+  competing mechanisms, and identifiability analysis before any fit. Every
+  inverse method is validated on forward-simulated data before it is
+  applied to real data.
+- **Real data of every kind:** readers, preprocessing and analyses, with
+  the owner's MATLAB app NeuroAnalyzer rebuilt natively in Python as part
+  of the same platform, then extended. Both directions use them.
+
+It is a web application (see [architecture.md](architecture.md)) built to
+grow without limit: new models, modalities, analyses and inverse methods
+are plugins.
+
 ## What the suite should do
 
 Explain the fMRI signal (and other hemodynamic and electrophysiological

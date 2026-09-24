@@ -29,6 +29,11 @@ Before any meaningful work, announce one of:
   `git config user.name "Alejandro Suarez" && git config user.email "107207149+alesuarez92@users.noreply.github.com"`
   Never add `Co-Authored-By` or session-link trailers.
 
+## Build and test
+
+- Python engine in `src/neurovascularsim/` (SI units inside; see `docs/architecture.md`).
+- `pip install -e ".[dev]"` then `pytest`. CI runs the same on every push.
+
 ## After every checkpoint
 
 - Commit with a clear message describing the change.

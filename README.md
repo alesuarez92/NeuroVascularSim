@@ -3,7 +3,10 @@
 A physiological simulation suite for the brain and the fMRI signal, by the
 NMD Lab (Alejandro Suarez, Ph.D.).
 
-**Status: planning.** Private until the first working models are in place.
+**Status: early development.** Private until the first working models are in
+place. The engine's first piece is in: steady blood flow with red-cell
+rheology on vascular graphs, validated against analytic cases and against
+Suarez et al. 2021 (J Theor Biol).
 
 ## Idea
 
@@ -28,7 +31,28 @@ It is a sibling of
 (NeuroAnalyzer): the two share data conventions, so simulated data opens in
 NeuroAnalyzer and real recordings analysed there can drive or test the models.
 
-See [docs/VISION.md](docs/VISION.md) for the plan.
+See [docs/VISION.md](docs/VISION.md) for the plan,
+[docs/architecture.md](docs/architecture.md) for how it is built,
+[docs/background.md](docs/background.md) for the owner's models and
+[docs/literature.md](docs/literature.md) for the literature it builds on.
+
+## Install and test
+
+```bash
+pip install -e ".[dev]"
+pytest
+```
+
+Quick example:
+
+```python
+from neurovascularsim import registry
+from neurovascularsim.vascular import solve_flow
+
+case = registry.create("network", "suarez2021a")
+sol = solve_flow(case.graph, case.pressure_bc)
+print(sol.flow, sol.hematocrit)
+```
 
 ## Data
 
