@@ -11,8 +11,8 @@ PubMed full-text service). Sources:
 ## How reliable each part is
 
 The retrieved full texts had **all equations, tables and inline symbols
-stripped**. The JCBFM paper (2025) came back as abstract only, but the owner
-has since supplied the PDF, so section 2.2 is from the full text. The
+stripped**. The owner has since supplied PDFs of the JCBFM 2025 paper and the
+2021a accepted manuscript, so sections 2.2 and 3 are from the full texts. The
 publisher and PMC websites are blocked from this environment. So each
 equation below carries one of these marks:
 
@@ -237,114 +237,195 @@ raises O₂ consumption [P].
 
 ## 3. Vascular stage
 
+Source: the accepted manuscript of 2021a supplied by the owner (not
+committed), including Table 1, Table A1 and Tables B1–B3. The PDF's equation
+typography extracts poorly, so the equations below are pieced back together
+from the extracted coefficients and the cited sources. They are marked [P]
+where the coefficients are legible and [R] where the form had to be
+inferred.
+
 ### 3.1 Detailed steady-flow network model (2021a)
 
-**Network** [P]: an idealised symmetric microvascular network of **22
-segments**. It runs from a pial artery (inlet) through bifurcating arterioles
-and capillaries to converging venules and a pial vein (outlet). Diameters are
-8–33 µm, consistent with rodent and cat data. Inlet and outlet pressures are
-fixed.
+**Network (Table 1)** [P]: a symmetric tree of 22 segments and 14 nodes,
+with fixed inlet and outlet pressures.
 
-**Per-segment state** [P]: flow $Q$, pressure drop $\Delta P$, discharge
-hematocrit $H_D$, resistance $R$ and apparent viscosity $\mu$ (five
-variables). Solving means a **linear system of 36 algebraic equations** for
-$Q$ and $\Delta P$, then $22 \times 3$ equations for $H$, $R$ and $\mu$
-[P]. I read this as iterated to self-consistency, since $R$ depends on
-$H_D$ [R].
+| Segment class | Diameter (µm) | Length (µm) |
+|---|---|---|
+| 1st-order arteriole | 27.5 | 100 |
+| 2nd-order (feeding) arteriole | 17.5 [15.5–19.5] | 100 [70–130] |
+| 3rd-order (daughter) arteriole | 11 [10–12] | 100 [70–130] |
+| Capillary | 8 | 250 |
+| 3rd / 2nd / 1st-order venule | 13 / 19.5 / 33 | 100 |
 
-**Equations**:
+Boundary conditions: $P_{in} = 60$ [50–70] mmHg, $P_{out} = 25$ mmHg,
+baseline discharge hematocrit $H_D = 0.45$ [0.32–0.50].
 
-- Hagen–Poiseuille [P, named]: $R = \dfrac{128\,\mu_{app}\,L}{\pi D^4}$, $\ \Delta P = Q R$.
-- Mass conservation of blood and RBCs at every node [R].
-- **Fåhraeus effect** (tube vs discharge hematocrit), **Fåhraeus–Lindqvist
-  effect** (apparent viscosity vs diameter and hematocrit) and **phase
-  separation at bifurcations** [P, named]. The paper says its viscosity laws
-  were **derived from cat data** [P]. Standard phase-separation form (Pries
-  et al.) [S]:
+**Equations (Table A1):**
+
+- In-vivo apparent viscosity [P], with $D$ in µm (the form with the
+  $D/(D-1.1)$ factor is the Pries et al. 1994 in-vivo law; the paper cites
+  Pries & Secomb 2005/2008):
 
 $$
-FQ_E = \frac{1}{1 + \exp\!\left[-\left(A + B\,\operatorname{logit}\frac{FQ_B - X_0}{1 - 2X_0}\right)\right]}
+\eta_{vivo} = \left[1 + (\eta^*_{0.45}-1)\,\frac{(1-H_D)^C - 1}{(1-0.45)^C - 1}\left(\frac{D}{D-1.1}\right)^2\right]\left(\frac{D}{D-1.1}\right)^2
+$$
+$$
+\eta^*_{0.45} = 6e^{-0.085D} + 3.2 - 2.44e^{-0.06D^{0.645}}, \quad
+C = \left(0.8 + e^{-0.075D}\right)\left(-1 + \frac{1}{1+10^{-11}D^{12}}\right) + \frac{1}{1+10^{-11}D^{12}}
 $$
 
-with $FQ_B$ the fraction of blood flow and $FQ_E$ the fraction of RBC flow
-into a daughter branch; $A$, $B$ and $X_0$ depend on diameters and $H_D$.
+- Hagen–Poiseuille and Ohm [P]: $R = \dfrac{128\,\eta\,L}{\pi D^4}$, $\ \Delta P = R\,Q$.
+- Continuity at every node [P]: $\sum_j Q_j = 0$. Together with Ohm this
+  gives the square linear system $M Y = Z$, with segment flows and node
+  pressures in $Y$ and $P_{in}$, $P_{out}$ in $Z$.
+- Phase separation at every bifurcation, from feeding vessel $F$ to
+  daughters $\alpha$ and $\beta$ [P, Pries & Secomb]:
 
-**Stimulus** [P]: the active arteriole (segment 4) dilates by ≈30%, driven
-by a relative neural activity trace.
+$$
+\operatorname{logit} FQ_{E,\alpha} = A + B\,\operatorname{logit}\frac{FQ_{B,\alpha}-X_0}{1-2X_0},\qquad \operatorname{logit} x = \ln\frac{x}{1-x}
+$$
+$$
+A = -13.29\,\frac{D_\alpha^2/D_\beta^2 - 1}{D_\alpha^2/D_\beta^2 + 1}\,\frac{1-H_{D,F}}{D_F},\quad
+B = 1 + 6.98\,\frac{1-H_{D,F}}{D_F},\quad
+X_0 = 0.964\,\frac{1-H_{D,F}}{D_F}
+$$
 
-**Stealing ratio** [P]: $\ \text{SR} = \dfrac{\max|\Delta \text{CBF}_{passive}|}{\max \Delta \text{CBF}_{active}}$.
+- RBC mass conservation [P]: $H_\alpha Q_\alpha = FQ_{E,\alpha} H_F Q_F$ and
+  $H_\beta Q_\beta = H_F Q_F - H_\alpha Q_\alpha$.
+- **Solution scheme** [P]: solve $MY = Z$, update the hematocrits, then
+  viscosity, then resistance, and iterate until the hematocrit converges
+  (tolerance $10^{-6}$, as read). This is quasi-steady: the network
+  re-equilibrates at every time step (1 ms) after a diameter change.
+- **Stimulus** [P/R]: a Gaussian relative neural activity $n(t)$ drives a
+  vasoactive signal with flow feedback. The feedback term is described as a
+  "shear-stress feedback that sets the saturation of flow increase".
+
+$$
+\dot s = \varepsilon\,(n-1) - \frac{s}{\tau_s} - \frac{Q_a/Q_{a,0} - 1}{\tau_f},\qquad
+\dot\phi = h_{se}\,s - h_{ds}\,\phi,\qquad D_a = D_{a,0}\,(1+\phi)
+$$
+
+  with $\varepsilon = 0.52$, $h_{se} = 1$ and $h_{ds} = 0.25$. Only segment 4
+  dilates, by about 30%.
+- **Stealing ratio** [P]:
+  $\ \text{SR} = \dfrac{1 - \min f_p}{\max f_a - 1}\times 100\%$.
 
 **Results** [P]:
 
-- ≈30% dilation of the active arteriole gives only ≈**10% CBF increase**
-  there, lower than VAN-model and two-photon reports. The paper discusses this
-  CBF–diameter mismatch.
-- The passive sibling arteriole (segment 5) loses flow: **arterial blood
-  stealing (ABS)**.
-- With hematocrit held constant, ABS **almost disappears**. The cause is
-  phase separation: plasma skimming refills the dilated branch, which raises
-  $H_D$ and viscosity in the passive branch.
-- SR ≈ 27.4% (Hct 0.32) to 23.3% (Hct 0.50). The inlet pressure has **no
-  effect**.
-- PRCC (LHS, 1000 sets): SR **rises** with feeding-arteriole length and
-  daughter diameter, and **falls** with Hct, daughter length and feeding
-  diameter. In 100 random networks SR ranged from 16.4% to 40.5%.
-- Arterioles **not** sharing the feeding vessel (segments 6 and 7) gain a
-  little flow, because RBCs are drawn toward the higher-flow branch, so
-  viscosity and resistance fall there.
+- ≈30% dilation gives only ≈10% more CBF in the active arteriole.
+- With the hematocrit held constant, ABS almost disappears.
+- SR is 27.4% at $H_D = 0.32$ and 23.3% at $H_D = 0.50$; over 100 random
+  networks it ranges from 16.4% to 40.5%.
+- Inlet pressure has no effect.
+- PRCC: SR rises with feeding-arteriole length and daughter diameter, and
+  falls with $H_D$, daughter length and feeding diameter.
+- Segments 6 and 7, which do not share the feeding vessel, gain a little
+  flow.
 
-**Assumptions** [P]: quasi-steady flow (refilling a 30% dilation takes
-≈0.5 s, fast next to a 2–3 s HRF rise). No autoregulation or myogenic tone.
-Symmetric network.
+**Two consequences I derived (not in the paper):**
+
+1. **Inlet pressure cannot matter in this model.** Poiseuille flow is
+   linear in $\Delta P$, and phase separation depends only on flow
+   *fractions*. So every relative quantity is independent of the pressure
+   scale. The pressure result is an identity of the model, not a
+   physiological finding.
+2. **The small CBF gain is set by the capillaries.** In units of $L/D^4$
+   (µm⁻³), the feeding arteriole is ≈$1.1\times10^{-3}$, a daughter
+   ≈$6.8\times10^{-3}$ and one 250 µm capillary ≈$6.1\times10^{-2}$.
+   Capillaries dominate each path's resistance, and in vivo their higher
+   apparent viscosity makes this stronger. Dilating the daughter by 30%
+   cuts its resistance by $1 - 1.3^{-4} \approx 65\%$, which is only ≈10%
+   of the path: the paper's ≈10% CBF.
+   - The feeding arteriole is only ~1–2% of the path, so pressure-mediated
+     stealing is tiny. This is why ABS here depends almost entirely on
+     hematocrit redistribution.
+   - The 2 × 250 µm capillaries per path are the lever, so realistic
+     capillary-bed geometry matters more than anything in the arterial
+     tree.
+
+   **Check.** I rebuilt the network in numpy. The topology is inferred from
+   the 14 unknown pressures: each daughter splits into two capillaries that
+   rejoin at a 3rd-order venule. With $\eta(D)$ at a fixed $H_D = 0.45$
+   and no phase separation, a 30% dilation of segment 4 gives **+10.4%**
+   flow in segment 4 and **−0.25%** in segment 5. That is a pure-resistance
+   stealing ratio of about 2.4%, against ~25% with phase separation. The
+   feeding arteriole is 1.4% of the path's resistance. This confirms the
+   paper's point quantitatively: in this network, stealing is about 10×
+   larger because of hematocrit redistribution than because of pressure.
 
 ### 3.2 Parsimonious windkessel model (2021a, reused in 2021b)
 
-**Structure** [P]: two windkessel regions (active and passive) sharing one
-feeding artery and one draining vein. Each region has three ODEs: relative
-CBF $f$, a **delayed (viscoelastic) compliance** state and relative CBV $v$.
-A **solenoid (inductor)** on the shared artery represents fluid inertia. In
-2021b this is "Option 1", with a non-linear delayed compliance [P].
-
-**Circuit** [R], my reading of "two windkessels on one feeding artery with an
-inductor":
+**Circuit (Fig. 3, Table B1)**: two regions ($i$ = 1 active, 2 passive)
+share a feeding artery with resistance $R_A$ and inductance $L_A$. Each
+region has an arteriolar resistance $R^0 r_i$ and a windkessel compliance.
+The regions drain into a common vein. Resistances are normalised so that
+[P]
 
 $$
-P_a - P_n = R_A F_A + L_A \dot F_A, \qquad F_A = F_1 + F_2, \qquad
-F_i = \frac{P_n - P_{c,i}}{R_i(t)}
+2R_A + R^0 + R_V = 1 \qquad \text{(B2, normalised total network resistance)}
 $$
 
-where $P_n$ is the node pressure after the shared artery and $R_i(t)$ the
-region's arteriolar resistance. Dilation lowers $R_1$, which raises $F_A$,
-lowers $P_n$ and so lowers $F_2$: stealing. Inertia ($L_A/R_A$) delays the
-passive response.
+with $R_V$ standing for the downstream (capillary–venous) resistance; the
+symbol is inferred.
 
-Each region's volume [S] (Buxton/Mandeville balloon with delayed compliance):
+Flow dynamics [R]: from Kirchhoff's second law, written for the relative
+flows $\mathbf f = (f_1, f_2)^T$, with $\mathbf M = \begin{pmatrix}1&1\\1&1\end{pmatrix}$
+(so flow through the shared artery is $f_1+f_2$) and $\mathbf N = \mathrm{diag}(r_1, r_2)$:
 
 $$
-\tau_0 \dot v_i = f_{in,i} - f_{out,i}, \qquad
-f_{out,i} = v_i^{1/\alpha} + \tau_{v}\,\dot v_i
+\tau_A\,\mathbf M\,\dot{\mathbf f} = \mathbf 1 - R_A\,\mathbf M\,\mathbf f - R^0\,\mathbf N\,\mathbf f - R^0\,\mathbf p(\mathbf v,\mathbf c)
 $$
 
-The paper's delayed-compliance state is probably a third variable rather than
-the $\tau_v \dot v$ shortcut [R].
+$\mathbf p$ is the windkessel (post-arteriolar) pressure term, a function
+of volume $v_i$ and compliance $c_i$. $\mathbf M$ is singular, so the system
+is a DAE solved with `ode15s` [P].
 
-**Fitting to the detailed model** [P]: noisy (σ = 0.003) CBF traces from
-segments 4 and 5 are fitted by least squares with a global optimiser in
-MATLAB (the function name was stripped). **Two parameters suffice**: the
-feeding second-order arteriole resistance and the baseline resistance of the
-daughter arterioles. The first falls and the second rises **parabolically
-with Hct** [P].
+Other equations:
 
-**Key parameter** (2021b) [P]: NBR amplitude grows with the shared **artery
-resistance relative to the total downstream resistance** (arterioles,
-capillaries, venules). Fitted $R_A = 0.17$ for patient 1. The quantity is
-presumably normalised; to confirm.
+- **Volume and compliance** [P, forms from Zheng & Mayhew 2009]:
+  $\tau_0\,\dot v_i = f_i - f_{out}(v_i, c_i)$, with a viscoelastic
+  compliance $c_i$ whose time constant is $\tau_c = 6.68$ s and whose CBV
+  gain is $\kappa = 7.6$. The exact $f_{out}$ and $\dot c$ equations
+  extract illegibly; to confirm from the source file.
+- **Neurovascular coupling** [P]:
+  $\dot s = \varepsilon(n-1) - s/\tau_s - (f_1 - 1)/\tau_f$.
+- **Arteriolar resistance** [P]: $\dot r_1 = -r_1^2\,s$. This follows from
+  $f \propto 1/r$ and $\dot f = s$.
+- **Inductance** [P]: $L = 4\rho l/(\pi D^2)$, with $\rho = 1.056$ g/cm³.
+  So $\tau_A = L/R = \rho D^2/(32\eta)$, taken as 1 ms for 20–30 µm
+  arterioles. It is ≈1.4 ms in mouse pial arteries and ≈0.3 s in human
+  large arteries.
 
-**Inertial time constants** [P]: mouse ≈1.4 ms, human ≈0.3 s. The observed
-1–5 s delays between positive and negative peaks are **not** explained by a
-single bifurcation. Candidates are autoregulation, averaging over many
-bifurcations, and departure from steady state. The inductor can absorb all of
-these with different time constants.
+**Parameters (Table B3)** [P]:
+
+| Parameter | Value |
+|---|---|
+| $\varepsilon$ (neurovascular coupling efficacy) | 0.28 [0.2–0.5] |
+| $\tau_s$ | 1.1 s |
+| $\tau_f$ (autoregulation time constant) | 1.2 s |
+| $\tau_0$ (tissue mean transit time) | 1.8 s |
+| Exponent ("diminished reserved volume") | 2 |
+| $\tau_c$ | 6.68 s |
+| $\kappa$ | 7.6 s |
+| $\tau_A$ | 1 ms |
+| $R_A$ (estimated) | ≈0.175–0.205 |
+| $R^0$ (estimated) | ≈0.415–0.465 |
+
+The $\varepsilon$ here (0.28) differs from the detailed model's
+$\varepsilon = 0.52$.
+
+**Fitting** [P]: $J = \frac1N\sum_k[(f_a - \hat f_a)^2 + (f_p - \hat f_p)^2]$
+against the detailed model plus noise with σ = 0.003, using `fmincon`, 30
+trials per hematocrit value. As $H_D$ rises, $R_A$ falls and $R^0$ rises,
+both parabolically.
+
+**Interpretation note (mine):** the fitted $R_A \approx 0.19$ of total
+resistance is about ten times the feeding arteriole's geometric share
+(≈1–2%). So $R_A$ is an *effective* parameter: it carries the hematocrit
+redistribution, not the artery's physical resistance. The same caution
+applies to $R_A = 0.17$ in 2021b. For the suite this is the central
+coarse-graining question: mesoscopic parameters should be *derived* from
+the graph (flows, hematocrit and pressure sensitivities), not only fitted.
 
 ---
 
@@ -497,8 +578,8 @@ but not in ECI.
 3. Should **Moshkforoush et al. 2021** (the astrocyte Ca²⁺ network model that
    drives the JCBFM model) join the paper list in VISION.md?
 4. Where is the **public code release** from 2021b?
-5. Which **phase-separation and viscosity laws** (Pries 1990 in vitro, 1994
-   in vivo, 2005 with ESL?) and the 22-segment geometry used in 2021a.
+5. For 2021a: the exact $f_{out}$, compliance and pressure-term equations of
+   Table B1, which extract illegibly from the manuscript PDF.
 6. What units and normalisation do the fitted $\tau_E = 3$, $\kappa = 0.51$
    and $R_A = 0.17$ use?
 
