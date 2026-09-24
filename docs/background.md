@@ -11,7 +11,8 @@ PubMed full-text service). Sources:
 ## How reliable each part is
 
 The retrieved full texts had **all equations, tables and inline symbols
-stripped**, and the JCBFM paper (2025) came back as **abstract only**. The
+stripped**. The JCBFM paper (2025) came back as abstract only, but the owner
+has since supplied the PDF, so section 2.2 is from the full text. The
 publisher and PMC websites are blocked from this environment. So each
 equation below carries one of these marks:
 
@@ -100,10 +101,11 @@ power at the detecting electrode [P]. Simulations used Poisson trains,
 - **The earlier in silico study** (cited by the eNeuro paper) predicted a
   non-monotonic Ca²⁺ response to light dose: more stimulation increases
   spiking up to a threshold, then spiking drops (ER depletion, pumps) while
-  baseline Ca²⁺ keeps rising. *I believe this is Moshkforoush et al. 2021
-  (PLoS Comput Biol) on stochastic ChR2-driven astrocytic Ca²⁺, but the
-  reference was stripped; the owner should confirm it and whether it belongs in
-  the paper list.*
+  baseline Ca²⁺ keeps rising. This is Moshkforoush A, Balachandar L, Moncion
+  C, et al. 2021, "Unraveling ChR2-driven stochastic Ca²⁺ dynamics in
+  astrocytes: a call for new interventional paradigms", *PLoS Comput Biol*
+  17:e1008648 (confirmed by the JCBFM reference list). The JCBFM model uses its
+  10 × 10 astrocyte network as input.
 - **Paradigm** [P]: period $T = 100$ s. Blue for $\delta = 20/40/60/80/95\%$
   of $T$, then 5 s amber ($\Delta = 5\%$), then dark. Five periods per
   recording.
@@ -133,28 +135,87 @@ with $\varepsilon$ the **neurovascular coupling gain** (named in the paper
 is written here as $x_E$; whether the drive is $x_E$ alone or a combination
 of $x_E$ and $x_I$ is to be confirmed.
 
-### 2.2 Astrocyte-mediated vasoactive pathways (2025 JCBFM, abstract only)
+### 2.2 Astrocyte-mediated vasoactive pathways (2025 JCBFM, full text read)
 
-What the abstract states [P]:
+Source: the published PDF supplied by the owner (not committed). The
+equation table is in the paper's Supplementary Material 2, which I have not
+seen; everything below is from the main text [P] unless marked.
 
-- A **comprehensive biophysical model of vasoactive signalling from
-  astrocytes** is combined with optogenetic stimulation of a large astrocyte
-  population. Pathways are "highly nonlinear and non-additive".
-- Sensitivity analysis plus optimisation to estimate key parameters.
-- Optogenetic astrocytic Ca²⁺ produces a CBF response with **two
-  components**. Component 1 is rapid and smaller (ΔCBF ≈ 13%, 18 s).
-  Component 2 is slower and larger (ΔCBF ≈ 18%, 45 s).
-- The model reproduces **component 2**, validated with a pharmacological
-  manipulation. Component 1 is **not** in the model; candidate scenarios are
-  discussed.
+**Input.** A global astrocytic Ca²⁺ signal $\mathrm{Ca^{2+}_{ast}}$: the
+mean of a *simulated* 10 × 10 network of gap-coupled astrocytes under the
+same light protocol (Moshkforoush et al. 2021, PLoS Comput Biol; 40
+simulated trials). In-vivo Ca²⁺ was not recorded.
 
-What I **cannot** see and must not guess: the compartments, pathways,
-equations, parameters and the drug used. The eNeuro paper mentions K⁺
-release into the perivascular space as a slow, sustained vasoactive route
-[P]. The usual pathway set in this model family is endfoot BK → perivascular
-K⁺ → smooth-muscle Kir → hyperpolarisation → VOCC → SMC Ca²⁺ → dilation,
-often plus EETs, 20-HETE and PGE₂. **This is a guess about the model family
-that needs the owner or the code to confirm.**
+**Five compartments and their pathways:**
+
+| Compartment | Pathways and states |
+|---|---|
+| Astrocyte | Ca²⁺ → cPLA₂ → arachidonic acid $AA_{ast}$. AA → **EET** (CYP2C epoxygenase) and **PGE₂** (COX-1). Ca²⁺ and EET gate astrocytic **BK** ($n_{ast}$), which releases K⁺. PGE₂ efflux by facilitated diffusion (pH- and voltage-driven). |
+| Perivascular space | **sPLA₂** (Ca²⁺-sensitive, coupled to cPLA₂) → $AA_p$, which enters the SMC and **constricts**. This is new in this paper. $K^+_p$ is set by BK_ast, BK_smc and Kir_smc currents and by clearance. |
+| Smooth muscle cell | $V_{smc}$ from BK_smc, Kir (depends on $V$ and $K^+_p$), VGCC and leak currents. $\mathrm{Ca^{2+}_{smc}}$ from VGCC and Ca-ATPase. PGE₂ → EP receptor → **cAMP**. $AA_p$ → **20-HETE** (CYP4A), inhibited by NO; the NO term is new. NO → sGC → **cGMP** (Yang et al. 2005). |
+| Endothelium | Wall-shear-driven eNOS → **NO**, in a simplified form (Yamazaki & Kamiyama 2014), with shear stress $ss = q/\phi$, $\phi$ the relative diameter. The inverse relation was checked with the 2021a network. |
+| Lumen and wall | A four-state myosin–actin crossbridge model (Koenigsberger et al. 2008). Ca²⁺ drives MLCK and cGMP drives MLCP. A new cAMP desensitisation factor $1/(k\,\mathrm{cAMP}+1)$ multiplies the $K_1$ and $K_6$ rates. The output is the relative diameter $\phi$, taken as **proportional to relative CBF**. |
+
+**Modified BK_smc steady-state gating** (new; exact typography to be checked
+against the supplement):
+
+$$
+n^{smc}_{\infty,BK} = \tfrac12\left[1+\tanh\!\left(\frac{V_{smc} + k_{EET}\,EET + k_{cAMP}\,cAMP + k_{cGMP}\,cGMP - k_{HETE}\,HETE - v_{3,BK}(\mathrm{Ca^{2+}_{smc}})}{v_{4,BK}}\right)\right]
+$$
+
+The model builds on Yang et al. 2005, Koenigsberger et al. 2008, Witthoft &
+Karniadakis 2012, Yamazaki & Kamiyama 2014 and Tesler et al. 2023. It was
+solved with MATLAB `ode15s`.
+
+**Parameters and fitting:**
+
+- 81 parameters in total. 17 are uncertain or new.
+- **Sensitivity analysis:** LHS with 10 000 samples, each parameter normal
+  around an arbitrary mean with a 5% SD. Linear partial correlations (MATLAB
+  `partialcorr`) against peak latency and FWHM, FWER-corrected.
+- **12 of the 17 were significant and fitted.** The text describes the 17:
+  $R_{decay}$, $VR_{ps}$, $g_{KIR,0}$, $g_{BK,smc}$, $k_{EET}$, $k_{cAMP}$,
+  $k_{cGMP}$, $k_{HETE}$, $Ca^{smc}_{3,BK}$, $Ca^{smc}_{4,BK}$, $g_{L,smc}$,
+  $O_{NO}$, $\delta$, $k$, $K_{m,cGMP}$, $k_{mlcp}$ and $r$. Which 12 were
+  fitted is shown only in Figure 3c and the supplement.
+- **Fit:** least squares with `fmincon`.
+
+**Data:**
+
+- n = 5 ChR2&Mlc1 mice and n = 5 wild-type mice; 5 more ChR2 mice for the
+  drug experiment.
+- LDF under isoflurane plus dexmedetomidine.
+- Protocol: blue light for 20 s at 0.15 mW/mm², over about 2 mm, then amber
+  for 5 s, with 175 s between stimuli. Five repetitions.
+- Processing:
+  1. Low-pass filter at 0.1 Hz (10th-order Butterworth).
+  2. Subtract the wild-type response, to remove a light-on CBF dip that the
+     authors attribute to light leaking into the LDF sensor.
+  3. Low-pass filter at 0.05 Hz, to remove a **0.072 ± 0.022 Hz oscillation
+     that the stimulus evoked**.
+  4. Normalise to the 10 s before stimulation.
+
+**Results:**
+
+- **Component 1:** ~13% at ~18 s. Not captured by the model.
+- **Component 2:** ~18% at ~45 s, decaying over ~135 s. Fitted well.
+- **Explaining component 1** within the model would need $k_{EET}$ doubled,
+  which then spoils component 2.
+- **Drug cocktail** (MAFP 100 µM for cPLA₂, varespladib 100 µM for sPLA₂,
+  paxilline 100 µM for BK): removes component 2, while a component matching
+  the unexplained residual (component 1) remains.
+- **Model knock-outs:** blocking P450 gives −73%, COX −38% (consistent with
+  the literature) and BK −90% (inconsistent with Girouard 2010's ~52%).
+
+**Candidate mechanisms for component 1 (discussion):**
+
+1. Astrocytic eNOS producing NO, which inhibits 20-HETE. Paxilline should
+   have blocked this.
+2. Capillary K⁺ activating endothelial Kir2.1, with the hyperpolarisation
+   conducted upstream (Longden 2017; Moshkforoush 2020), and/or ensheathing
+   pericytes (Gonzales 2020). Paxilline may not reach capillary depth.
+3. Glutamate from the endfeet reaching neuronal NMDA receptors, then COX-2
+   producing PGE₂.
 
 ### 2.3 Neurometabolic coupling (2021b)
 
@@ -431,11 +492,10 @@ but not in ECI.
    Especially: the P-DCM extension, the exact windkessel + inductor circuit
    and its three states per region, the OTT model, and the BOLD equation and
    coefficients.
-2. The **JCBFM 2025 model**: which compartments and pathways (K⁺/BK/Kir,
-   EETs, 20-HETE, PGE₂, NO?), which drug validated component 2, and which
-   earlier NVU model it builds on.
-3. Which **in silico ChR2/astrocyte Ca²⁺ paper** the eNeuro study cites, and
-   should it join the paper list?
+2. The **JCBFM 2025 supplement** (the equations and parameter table) is
+   needed, as are which 12 parameters were fitted and their values.
+3. Should **Moshkforoush et al. 2021** (the astrocyte Ca²⁺ network model that
+   drives the JCBFM model) join the paper list in VISION.md?
 4. Where is the **public code release** from 2021b?
 5. Which **phase-separation and viscosity laws** (Pries 1990 in vitro, 1994
    in vivo, 2005 with ESL?) and the 22-segment geometry used in 2021a.
