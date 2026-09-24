@@ -1,0 +1,6 @@
+*.asv
+*.mex*
+.DS_Store
+data/
+*.nii
+*.nii.gz

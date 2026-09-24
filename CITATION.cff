@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+title: NeuroVascularSim
+message: >-
+  If you use this software in research, please cite it using the metadata
+  below.
+type: software
+authors:
+  - given-names: Alejandro
+    family-names: Suarez
+repository-code: "https://github.com/alesuarez92/NeuroVascularSim"
+abstract: >-
+  Physiological simulation suite from neural activity and biochemical
+  pathways to blood flow and the fMRI signal, combined with real-data
+  analysis.

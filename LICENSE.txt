@@ -1,0 +1,33 @@
+═══════════════════════════════════════════════════════════════════════════════
+  📜  L I C E N S E  —  A L L   R I G H T S   R E S E R V E D
+═══════════════════════════════════════════════════════════════════════════════
+
+  ©  Copyright  Alejandro Suarez, Ph.D.
+     All rights reserved.
+
+
+  USE ONLY
+  ───────
+
+  This repository is made publicly available for viewing and personal use only.
+
+  You MAY:
+    • View and read the source code
+    • Clone or download the repository for your own reference
+    • Run the software locally for non-commercial use
+
+  You may NOT, without explicit written permission from the copyright holder(s):
+    • Modify, adapt, or create derivative works from this code
+    • Redistribute this code or any modified version of it
+    • Use this code in a commercial product or service
+    • Remove or alter this copyright and use notice
+
+  For permission to use this software beyond the above terms, contact the
+  repository owner (see profile link in the main README).
+
+
+  ───────────────────────────────────────────────────────────────────────────
+  This notice applies to the contents of this repository. Third-party code
+  (e.g. in subfolders such as Utilities) may have its own licenses; see the
+  respective directories and files.
+═══════════════════════════════════════════════════════════════════════════════
