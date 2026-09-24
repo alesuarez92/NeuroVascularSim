@@ -74,8 +74,8 @@ Two NBR mechanisms live here [P]:
 
 | Mechanism | Physiology | Model knob |
 |---|---|---|
-| **ECI** (enhanced cortical inhibition) | Inhibition after the spike (the slow wave of spike–wave) exceeds excitation, e.g. layer III/V pyramidal hyperpolarisation | Large inhibitory response time $\tau_I$ |
-| **NDA** (network deactivation, e.g. DMN) | An IED switches off an RSN node, which recovers slowly | Reduced intralaminar excitatory connectivity (0.01) and a large excitatory time constant $\tau_E$ (fitted value 3 in patient 3; units not visible) |
+| **ECI** (enhanced cortical inhibition) | Inhibition after the spike (the slow wave of spike–wave) exceeds excitation, e.g. layer III/V pyramidal hyperpolarisation | Large inhibitory response time $\tau_{i1}$ [P] |
+| **NDA** (network deactivation, e.g. DMN) | An IED switches off an RSN node, which recovers slowly | Reduced intralaminar excitatory connectivity $c_{e2} = 0.01$ and a large excitatory response time $\tau_{e2}$ (fitted **3 s** in patient 3) [P] |
 
 ### 1.2 Input
 
@@ -227,9 +227,13 @@ raises O₂ consumption [P].
 - **ANC** (abnormal neurovascular/metabolic coupling): with $\varepsilon$
   fixed, a disproportionately large $\kappa$ gives an NBR, "an exaggerated
   initial dip" [P].
-- Fitted value for patient 4: $\kappa = 0.51$, giving a coupling ratio
-  **14× smaller than normal** [P]. The ratio's symbol and normal value were
-  stripped; this is most likely the CBF/CMRO₂ coupling ratio $n$.
+- The balance is the ratio $\varepsilon/\kappa$. Normal positive responses
+  have $\varepsilon/\kappa \approx 0.4/0.05 = 8$ [P].
+- Fitted value for patient 4: $\kappa = 0.51\ \mathrm{s^{-1}}$ with
+  $\varepsilon = 0.28$, giving $0.28/0.51 = 0.55$, about **14× smaller**
+  than normal [P]. The "normal" reference uses $\varepsilon = 0.4$ and the
+  patient fit uses $\varepsilon = 0.28$, so the 14× mixes a change in
+  $\varepsilon$ with the change in $\kappa$.
 - The OTT equations are not visible (the reference is probably Zheng et al.
   2002 or a Riera-lab variant) [S?].
 
@@ -504,8 +508,9 @@ Preprocessing pipeline [P]:
 | Least-squares fit with a global optimiser | 2021a, 2025 JCBFM | Parameter estimation |
 
 Note: 2021b says the **model code was released publicly** with PDF
-documentation [P]. The link was stripped; it is worth locating, as it may be
-the cleanest version of the windkessel and NBR code.
+documentation at `http://web.eng.fiu.edu/jrieradi/NBR-Model/` [P]. The
+server returns 403 from this environment. The equations are in the online
+Supplementary Tables A1–A3, which are not in the article PDF.
 
 ## 6. The four NBR mechanisms at a glance (2021b)
 
@@ -577,11 +582,14 @@ but not in ECI.
    needed, as are which 12 parameters were fitted and their values.
 3. Should **Moshkforoush et al. 2021** (the astrocyte Ca²⁺ network model that
    drives the JCBFM model) join the paper list in VISION.md?
-4. Where is the **public code release** from 2021b?
+4. The **2021b Supplementary Material** (Tables A1–A3 with the model
+   equations and parameter ranges) and the NBR-Model code: upload both under
+   `legacy/`, since the FIU link is not reachable from here.
 5. For 2021a: the exact $f_{out}$, compliance and pressure-term equations of
    Table B1, which extract illegibly from the manuscript PDF.
-6. What units and normalisation do the fitted $\tau_E = 3$, $\kappa = 0.51$
-   and $R_A = 0.17$ use?
+6. Units are now known ($\tau_{e2}$ = 3 s, $\kappa$ = 0.51 s⁻¹). $R_A$ =
+   0.17 is a fraction of the normalised total resistance, but it is an
+   effective parameter (see section 3.2).
 
 ## References
 
