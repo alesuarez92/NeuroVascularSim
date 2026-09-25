@@ -109,51 +109,31 @@ when citing. The owner may add papers not indexed in PubMed.
 The owner uploads the original code under `legacy/` (one subfolder per topic,
 e.g. `legacy/biochemical`, `legacy/flow`, `legacy/fmri`), without lab data.
 
-## Design principles (owner, 2026-09)
+## Design principles
 
-**Modular systems, zoom in and out.** Each physiological system (vessel
-network, blood flow, oxygen, endothelial signalling, mural cells, neurons,
-the imaging signal, …) is a module with defined inputs and outputs:
-boundary conditions, initial conditions and the states it exchanges with
-other systems. Everything is interconnected, but a study focuses on one
-system in detail while the others supply their conditions from a
-mesoscopic version. Improving or replacing one module must not break the
-others. Going in (e.g. single endothelial cells and gap-junction
-conduction) uses detailed models; going out uses averaged, statistical
-behaviour.
+1. **Modules with clear boundaries.** Each system (vessel network, blood
+   flow, oxygen, endothelial signalling, neurons, imaging signal, …) is a
+   module with defined inputs and outputs. A study zooms in on one module,
+   and the others supply its boundary and initial conditions. A module can
+   be refined or replaced without breaking the rest.
+2. **Detail on demand.** Every module starts at the established, accepted
+   level of detail and goes deeper only when a study needs to reproduce a
+   specific dataset or condition.
+3. **Two versions of each module.** A detailed model, and a fast
+   mesoscopic model with the same interface, so either can stand in.
+4. **Learned mesoscopic models.** The fast version is not a hand-written
+   simplifying equation. It is a machine-learning model, sized to the
+   problem, trained on many detailed runs across inputs and conditions
+   (every detailed run is stored as training data). It returns only the
+   outputs asked for, at the resolution asked for: a whole-column mean,
+   per layer, or finer. It reports its uncertainty and flags conditions
+   outside its training, where the detailed model is used instead. It
+   respects conservation laws where possible, is validated against
+   held-out detailed runs, real data and classical equation-based models,
+   and is retrained whenever the detailed model improves.
 
-**Detail only when needed.** Each system starts at the level of detail that
-is established and accepted. It goes deeper only when someone wants to
-reproduce a specific dataset or condition. The structure must allow that
-from the start, so growth never means going back and breaking things.
-
-**The mesoscopic model is learned from the detailed one.** The classical
-route (a detailed model too costly to use, then a hand-written simplified
-equation that cannot reproduce the detail) is not the goal. Instead:
-1. Detailed simulations are run over many inputs, boundary and initial
-   conditions, and every run is stored (inputs, conditions, outputs) in a
-   standard format, so each run is also training data.
-2. A surrogate (emulator) is trained on these runs. It returns the
-   system's outputs fast, without a fixed phenomenological equation. It
-   need not be a large AI model: any trained machine-learning model sized
-   to the system (e.g. random forest, gradient boosting, a small neural
-   network); choosing the method is an optimisation for later. The caller
-   picks which outputs and at what resolution, e.g. from the vasculature
-   only inlet/outlet pressure, mean flow speed and oxygen delivery for the
-   whole column, or the same quantities per layer. More outputs or finer
-   resolution are added when a study needs them.
-3. The surrogate and the detailed model share the same interface, so
-   either can stand in for a system.
-4. The surrogate reports its uncertainty and flags conditions outside its
-   training range; there the detailed model is used instead.
-5. Physical constraints (conservation of blood, red cells, oxygen) are
-   built in where possible.
-6. It is validated on held-out detailed runs and on real data, and
-   compared with the classical equation-based models as a baseline.
-7. It is retrained whenever the detailed model improves.
-
-Fast surrogates also make the inverse problem practical: parameter
-estimation with uncertainty needs many model runs.
+Fast learned models also make the inverse problem (estimating physiology
+from data) practical, since it needs many model runs.
 
 ## Order of work
 
