@@ -85,6 +85,15 @@ npm test                                 # front-end unit tests
 Lab recordings are not part of this repository. Tests and demos use synthetic
 data with known ground truth.
 
+## How this software is developed
+
+NeuroVascularSim is designed and directed by its author, who sets the scientific
+scope, makes the modelling decisions and reviews the results. The code is
+written with the assistance of Claude (Anthropic), an AI coding assistant. The
+scientific models are implemented from the published literature and cited in
+the code and in `docs/`. The author is responsible for the software and its
+use.
+
 ## Author
 
 Alejandro Suarez, Ph.D. Released under the [MIT licence](LICENSE.txt).
