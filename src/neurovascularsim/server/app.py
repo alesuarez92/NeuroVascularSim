@@ -16,16 +16,20 @@ large networks comes with the realistic 3D graphs.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .. import __version__, registry
 from ..experiment import ExperimentSpec, RunStore, run_experiment
 
 DEFAULT_RUN_DIR = os.environ.get("NVS_RUN_DIR", "runs")
+# The built web app (web/dist in a source checkout), served at "/" if present.
+DEFAULT_WEB_DIR = os.environ.get("NVS_WEB_DIR", str(Path(__file__).resolve().parents[3] / "web" / "dist"))
 
 
 class NetworkRequest(BaseModel):
@@ -43,7 +47,7 @@ def _plugin_info(kind: str, name: str) -> dict:
     }
 
 
-def create_app(run_dir: str = DEFAULT_RUN_DIR) -> FastAPI:
+def create_app(run_dir: str = DEFAULT_RUN_DIR, web_dir: str | None = DEFAULT_WEB_DIR) -> FastAPI:
     app = FastAPI(title="NeuroVascularSim", version=__version__)
     # The front end may be served from another origin during development.
     app.add_middleware(
@@ -108,5 +112,9 @@ def create_app(run_dir: str = DEFAULT_RUN_DIR) -> FastAPI:
             return store.load(run_id)
         except KeyError:
             raise HTTPException(404, f"no run {run_id}") from None
+
+    # Mounted last so the API routes above take precedence.
+    if web_dir and (Path(web_dir) / "index.html").exists():
+        app.mount("/", StaticFiles(directory=web_dir, html=True), name="web")
 
     return app

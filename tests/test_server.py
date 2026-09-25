@@ -63,3 +63,17 @@ def test_run_lifecycle(client):
 def test_invalid_run_is_422(client):
     bad = dict(EXAMPLE, network={"name": "nope", "params": {}})
     assert client.post("/api/runs", json=bad).status_code == 422
+
+
+def test_serves_the_web_app_when_built(tmp_path):
+    web = tmp_path / "dist"
+    web.mkdir()
+    (web / "index.html").write_text("<!doctype html><title>NeuroVascularSim</title>")
+    c = TestClient(create_app(run_dir=str(tmp_path / "runs"), web_dir=str(web)))
+    assert "NeuroVascularSim" in c.get("/").text
+    assert c.get("/api/health").json()["status"] == "ok"
+
+
+def test_no_web_app_without_build(tmp_path):
+    c = TestClient(create_app(run_dir=str(tmp_path), web_dir=str(tmp_path / "missing")))
+    assert c.get("/").status_code == 404

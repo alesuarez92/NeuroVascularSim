@@ -33,6 +33,7 @@ Before any meaningful work, announce one of:
 
 - Python engine in `src/neurovascularsim/` (SI units inside; see `docs/architecture.md`).
 - `pip install -e ".[dev]"` then `pytest`. CI runs the same (see CI below); run the tests locally before every push.
+- Web app in `web/` (React + TypeScript + three.js): `npm install`, `npm test`, `npm run build`. Not in CI yet; run it locally when `web/` changes.
 
 ## After every checkpoint
 

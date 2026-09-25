@@ -57,7 +57,16 @@ Experiments are JSON specs; runs are saved with provenance:
 
 ```bash
 nvs run examples/suarez2021a_stealing.json   # run a spec, save it under runs/
-nvs serve                                    # web API on http://127.0.0.1:8000 (docs at /docs)
+nvs serve                                    # web app + API on http://127.0.0.1:8000 (API docs at /docs)
+```
+
+The web app (React + three.js) lives in `web/`. Build it once and `nvs serve`
+serves it:
+
+```bash
+cd web && npm install && npm run build   # then: nvs serve
+npm run dev                              # development: hot reload, proxies /api to :8000
+npm test                                 # front-end unit tests
 ```
 
 ## Data

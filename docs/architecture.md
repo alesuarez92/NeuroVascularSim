@@ -142,6 +142,10 @@ web/                React front end (after the service)
 3. FastAPI service (`server/app.py`, `nvs serve`): plugins, networks,
    validation, runs. **(done; synchronous runs; job runner comes with
    large 3D networks)**
-4. Web front end: network viewer in 3D, experiment editor, results. **(next)**
+4. Web front end (`web/`): 3D network viewer (instanced vessels, hover
+   details), experiment editor (form + full JSON spec), colour by vessel
+   type, flow change, flow or hematocrit, per-edge table, run history.
+   Served by `nvs serve` once built. **(done; light theme only until a
+   dark palette is validated)**
 5. Then widen the science: realistic mouse networks, pathways (astrocyte,
    EC conduction, pericytes), oxygen, BOLD, the 2D column.
