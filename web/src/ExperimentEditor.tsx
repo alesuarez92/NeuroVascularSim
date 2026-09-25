@@ -249,9 +249,10 @@ export function ExperimentEditor({ plugins, spec, onChange, onRun, running, data
         {jsonError && <p className="error">{jsonError}</p>}
       </details>
 
-      <button className="primary" onClick={onRun} disabled={running}>
-        {running ? "Running…" : "Run experiment"}
+      <button className="primary" onClick={onRun}>
+        {running ? "Queue another run" : "Run experiment"}
       </button>
+      {running && <p className="hint">Running in the background; you can keep editing and exploring.</p>}
     </div>
   );
 }

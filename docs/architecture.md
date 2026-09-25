@@ -158,5 +158,8 @@ web/                React front end (after the service)
    for validation and known gaps)**
 6. Boundary conditions and vessel labelling for reconstructed graphs
    (`labeling.py`). **(done)**
-7. Then widen the science: a background job queue, pathways (astrocyte, EC
+7. Background job queue (`jobs.py`, `/api/jobs`): runs on worker threads
+   with progress and cancellation; the web app lists jobs and opens the
+   result when it finishes. **(done; jobs are kept in memory, runs on disk)**
+8. Then widen the science: pathways (astrocyte, EC
    conduction, pericytes), oxygen, BOLD, the 2D column.

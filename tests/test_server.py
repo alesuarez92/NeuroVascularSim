@@ -1,4 +1,5 @@
 import json
+import time
 from pathlib import Path
 
 import pytest
@@ -127,3 +128,24 @@ def test_data_file_too_large(client, data_dir, monkeypatch):
 
     monkeypatch.setattr(server, "MAX_UPLOAD_BYTES", 4)
     assert client.put("/api/data-files/big.csv", content=b"12345").status_code == 413
+
+
+def test_job_lifecycle(client):
+    r = client.post("/api/jobs", json=EXAMPLE)
+    assert r.status_code == 202
+    job = r.json()
+    for _ in range(3000):
+        job = client.get(f"/api/jobs/{job['id']}").json()
+        if job["status"] not in ("queued", "running"):
+            break
+        time.sleep(0.02)
+    assert job["status"] == "done"
+    assert client.get(f"/api/runs/{job['run_id']}").json()["id"] == job["run_id"]
+    assert [j["id"] for j in client.get("/api/jobs").json()] == [job["id"]]
+    assert client.delete(f"/api/jobs/{job['id']}").json()["status"] == "done"  # finished jobs stay finished
+    assert client.get("/api/jobs/nope").status_code == 404
+
+
+def test_invalid_job_is_422(client):
+    bad = dict(EXAMPLE, network={"name": "nope", "params": {}})
+    assert client.post("/api/jobs", json=bad).status_code == 422

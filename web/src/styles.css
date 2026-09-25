@@ -196,3 +196,8 @@ button:disabled { opacity: 0.55; cursor: default; }
 .verdict.out { color: var(--critical); }
 .table-note { padding: 4px 10px; margin: 0; }
 tbody tr { cursor: pointer; }
+
+.jobs { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.job { display: grid; gap: 3px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: #fff; font-size: 12px; }
+.job.running { border-color: var(--accent); }
+.job progress { width: 100%; height: 6px; accent-color: var(--accent); }

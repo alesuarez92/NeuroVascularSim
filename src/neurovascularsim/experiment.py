@@ -19,7 +19,7 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 import scipy
@@ -162,9 +162,16 @@ def _fields(sol) -> dict:
     }
 
 
-def run_experiment(spec: ExperimentSpec) -> RunRecord:
-    """Solve the baseline and every condition, and summarise the changes."""
+def run_experiment(spec: ExperimentSpec, progress: Callable[[str, int, int], None] | None = None) -> RunRecord:
+    """Solve the baseline and every condition, and summarise the changes.
+
+    ``progress(stage, done, total)`` is called before each step (building the
+    network, then each solve). It may raise to abort the run between steps.
+    """
     spec.validate()
+    total = 2 + len(spec.conditions)
+    report = progress or (lambda stage, done, total: None)
+    report("network", 0, total)
     base_case = registry.create("network", spec.network.name, **spec.network.params)
     solver = dict(spec.solver)
 
@@ -174,10 +181,12 @@ def run_experiment(spec: ExperimentSpec) -> RunRecord:
         out["diameter"] = case.graph.diameter.tolist()
         return sol, out
 
+    report("baseline", 1, total)
     base_sol, base_out = solve(base_case)
     results = {"baseline": base_out}
     summary = {}
-    for cond in spec.conditions:
+    for i, cond in enumerate(spec.conditions):
+        report(cond.label, 2 + i, total)
         case = base_case
         for p in cond.perturbations:
             case = registry.create("perturbation", p.name, **p.params)(case)
@@ -213,7 +222,11 @@ class RunStore:
         return self.directory / f"{run_id}.json"
 
     def save(self, record: RunRecord) -> None:
-        self._path(record.id).write_text(json.dumps(record.to_dict()))
+        # Write then rename, so readers (e.g. list() while a job saves) never see a partial file.
+        path = self._path(record.id)
+        tmp = path.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(record.to_dict()))
+        tmp.replace(path)
 
     def load(self, run_id: str) -> dict:
         path = self._path(run_id)

@@ -9,8 +9,8 @@ Run locally::
     pip install -e ".[server]"
     nvs serve    # or: uvicorn --factory neurovascularsim.server.app:create_app
 
-Runs execute synchronously for now (small networks). A job queue for
-large networks comes with the realistic 3D graphs.
+Runs can be submitted as background jobs (``/api/jobs``, see jobs.py) or
+run synchronously (``/api/runs``, for small networks and scripts).
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ import math
 import os
 import re
 import warnings
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -30,10 +31,12 @@ import numpy as np
 
 from .. import __version__, registry
 from ..experiment import ExperimentSpec, RunStore, run_experiment
+from ..jobs import JobQueue
 from ..vascular import io as vio
 from ..vascular.stats import capillary_branch_order, network_statistics, tissue_vessel_distance
 
 DEFAULT_RUN_DIR = os.environ.get("NVS_RUN_DIR", "runs")
+DEFAULT_WORKERS = int(os.environ.get("NVS_WORKERS", "1"))
 MAX_UPLOAD_BYTES = 512 * 2**20
 # The built web app (web/dist in a source checkout), served at "/" if present.
 DEFAULT_WEB_DIR = os.environ.get("NVS_WEB_DIR", str(Path(__file__).resolve().parents[3] / "web" / "dist"))
@@ -66,8 +69,18 @@ def _plugin_info(kind: str, name: str) -> dict:
     }
 
 
-def create_app(run_dir: str = DEFAULT_RUN_DIR, web_dir: str | None = DEFAULT_WEB_DIR) -> FastAPI:
-    app = FastAPI(title="NeuroVascularSim", version=__version__)
+def create_app(run_dir: str = DEFAULT_RUN_DIR, web_dir: str | None = DEFAULT_WEB_DIR,
+               workers: int = DEFAULT_WORKERS) -> FastAPI:
+    store = RunStore(run_dir)
+    jobs = JobQueue(store, workers=workers)
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        yield
+        jobs.shutdown()
+
+    app = FastAPI(title="NeuroVascularSim", version=__version__, lifespan=lifespan)
+    app.state.jobs = jobs
     # The front end may be served from another origin during development.
     app.add_middleware(
         CORSMiddleware,
@@ -75,7 +88,6 @@ def create_app(run_dir: str = DEFAULT_RUN_DIR, web_dir: str | None = DEFAULT_WEB
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    store = RunStore(run_dir)
 
     @app.get("/api/health")
     def health():
@@ -162,6 +174,32 @@ def create_app(run_dir: str = DEFAULT_RUN_DIR, web_dir: str | None = DEFAULT_WEB
             raise HTTPException(422, str(e)) from None
         store.save(record)
         return record.to_dict()
+
+    @app.post("/api/jobs", status_code=202)
+    def submit_job(spec: dict):
+        """Queue a run; poll GET /api/jobs/{id} for progress and the run id."""
+        try:
+            return jobs.submit(ExperimentSpec.from_dict(spec)).to_dict()
+        except (KeyError, TypeError, ValueError, IndexError) as e:
+            raise HTTPException(422, str(e)) from None
+
+    @app.get("/api/jobs")
+    def list_jobs():
+        return [j.to_dict() for j in jobs.list()]
+
+    @app.get("/api/jobs/{job_id}")
+    def get_job(job_id: str):
+        try:
+            return jobs.get(job_id).to_dict()
+        except KeyError:
+            raise HTTPException(404, f"no job {job_id}") from None
+
+    @app.delete("/api/jobs/{job_id}")
+    def cancel_job(job_id: str):
+        try:
+            return jobs.cancel(job_id).to_dict()
+        except KeyError:
+            raise HTTPException(404, f"no job {job_id}") from None
 
     @app.get("/api/runs")
     def list_runs():

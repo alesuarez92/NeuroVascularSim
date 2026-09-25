@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Condition, Graph, NetworkStats } from "./api";
+import type { Condition, Graph, Job, NetworkStats } from "./api";
+import { runToShow } from "./JobList";
 import { SEGMENT_COLORS } from "./colors";
 import { MAX_ROWS, tableRows } from "./EdgeTable";
 import { formatList, paramKind, parseList } from "./params";
@@ -113,5 +114,28 @@ describe("tableRows", () => {
     const rows = tableRows(10_000, 9_000);
     expect(rows.length).toBe(MAX_ROWS + 1);
     expect(rows[0]).toBe(9_000);
+  });
+});
+
+describe("runToShow", () => {
+  const job = (id: string, status: Job["status"]): Job => ({
+    id, name: id, status, stage: "", done: 0, total: 3, created: "", started: null, finished: null,
+    run_id: status === "done" ? `run_${id}` : null, error: status === "failed" ? "boom" : null,
+  });
+  it("shows the latest submission, skipping cancelled ones", () => {
+    const jobs = [job("a", "done"), job("b", "cancelled")];
+    expect(runToShow(["a", "b"], jobs, [jobs[0]])?.id).toBe("a");
+  });
+  it("does not replace a newer pending submission with an older result", () => {
+    const jobs = [job("a", "done"), job("b", "running")];
+    expect(runToShow(["a", "b"], jobs, [jobs[0]])).toBeUndefined();
+  });
+  it("reports a failed latest submission", () => {
+    const jobs = [job("a", "failed")];
+    expect(runToShow(["a"], jobs, jobs)?.status).toBe("failed");
+  });
+  it("ignores jobs submitted elsewhere", () => {
+    const jobs = [job("x", "done")];
+    expect(runToShow([], jobs, jobs)).toBeUndefined();
   });
 });

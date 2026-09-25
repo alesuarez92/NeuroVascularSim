@@ -92,6 +92,22 @@ export type NetworkStats = {
 
 export type DataFile = { name: string; size: number };
 
+export type Job = {
+  id: string;
+  name: string;
+  status: "queued" | "running" | "done" | "failed" | "cancelled";
+  stage: string;
+  done: number;
+  total: number;
+  created: string;
+  started: string | null;
+  finished: string | null;
+  run_id: string | null;
+  error: string | null;
+};
+
+export const jobActive = (j: Job) => j.status === "queued" || j.status === "running";
+
 export type RunEntry = { id: string; name: string; created: string };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -127,6 +143,9 @@ export const api = {
   validate: (spec: ExperimentSpec) =>
     post<{ valid: boolean; error?: string }>("/api/experiments/validate", spec),
   run: (spec: ExperimentSpec) => post<RunRecord>("/api/runs", spec),
+  submitJob: (spec: ExperimentSpec) => post<Job>("/api/jobs", spec),
+  jobs: () => request<Job[]>("/api/jobs"),
+  cancelJob: (id: string) => request<Job>(`/api/jobs/${id}`, { method: "DELETE" }),
   runs: () => request<RunEntry[]>("/api/runs"),
   getRun: (id: string) => request<RunRecord>(`/api/runs/${id}`),
 };

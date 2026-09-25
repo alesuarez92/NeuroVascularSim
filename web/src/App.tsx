@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   api,
   type DataFile,
+  type Job,
+  jobActive,
   type ExperimentSpec,
   type NetworkResponse,
   type Plugins,
@@ -10,6 +12,7 @@ import {
 } from "./api";
 import { SEGMENT_LABELS } from "./colors";
 import { EdgeTable } from "./EdgeTable";
+import { JobList, runToShow } from "./JobList";
 import { ExperimentEditor } from "./ExperimentEditor";
 import { Legend } from "./Legend";
 import { NetworkView } from "./NetworkView";
@@ -54,7 +57,10 @@ export default function App() {
   const [viewSettings, setViewSettings] = useState<ViewSettings>(DEFAULT_VIEW);
   const [dataFiles, setDataFiles] = useState<DataFile[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [running, setRunning] = useState(false);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  // Jobs submitted from this page, oldest first: a finished run opens by
+  // itself unless a later submission is still pending or already done.
+  const [submitted, setSubmitted] = useState<string[]>([]);
 
   const fail = (e: unknown) => setError(e instanceof Error ? e.message : String(e));
 
@@ -66,7 +72,35 @@ export default function App() {
     }).catch(fail);
     api.runs().then(setRuns).catch(fail);
     api.dataFiles().then(setDataFiles).catch(fail);
+    api.jobs().then(setJobs).catch(fail);
   }, []);
+
+  // Poll while any job is queued or running.
+  const anyActive = jobs.some(jobActive);
+  const jobsRef = useRef(jobs);
+  jobsRef.current = jobs;
+  const submittedRef = useRef(submitted);
+  submittedRef.current = submitted;
+  useEffect(() => {
+    if (!anyActive) return;
+    const t = setInterval(async () => {
+      try {
+        const next = await api.jobs();
+        const wasActive = new Set(jobsRef.current.filter(jobActive).map((j) => j.id));
+        const finished = next.filter((j) => !jobActive(j) && wasActive.has(j.id));
+        setJobs(next);
+        if (!finished.length) return;
+        setRuns(await api.runs());
+        const show = runToShow(submittedRef.current, next, finished);
+        if (show?.status === "done" && show.run_id) await openRun(show.run_id, false);
+        if (show?.status === "failed") setError(show.error);
+      } catch (e) {
+        fail(e);
+      }
+    }, 800);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anyActive]);
   const refreshDataFiles = () => api.dataFiles().then(setDataFiles).catch(fail);
 
   // Describe the network whenever its name or parameters change.
@@ -99,27 +133,30 @@ export default function App() {
 
   async function runExperiment() {
     if (!spec) return;
-    setRunning(true);
     try {
-      const check = await api.validate(spec);
-      if (!check.valid) throw new Error(check.error ?? "invalid experiment");
-      const record = await api.run(spec);
-      setRun(record);
-      const first = Object.keys(record.summary)[0];
-      setColorBy(first ? { kind: "relflow", label: first } : { kind: "type" });
-      setRuns(await api.runs());
+      const job = await api.submitJob(spec);
+      setJobs((prev) => [job, ...prev]);
+      setSubmitted((prev) => [...prev, job.id]);
       setError(null);
     } catch (e) {
       fail(e);
-    } finally {
-      setRunning(false);
     }
   }
 
-  async function openRun(id: string) {
+  async function cancelJob(id: string) {
+    try {
+      const job = await api.cancelJob(id);
+      setJobs((prev) => prev.map((j) => (j.id === id ? job : j)));
+    } catch (e) {
+      fail(e);
+    }
+  }
+
+  async function openRun(id: string, loadSpec = true) {
     try {
       const record = await api.getRun(id);
-      setSpec(record.spec);
+      // Opening a past run loads its spec; a finished job keeps the spec being edited.
+      if (loadSpec) setSpec(record.spec);
       setRun(record);
       const first = Object.keys(record.summary)[0];
       setColorBy(first ? { kind: "relflow", label: first } : { kind: "type" });
@@ -162,7 +199,7 @@ export default function App() {
             spec={spec}
             onChange={setSpec}
             onRun={runExperiment}
-            running={running}
+            running={jobs.some((j) => submitted.includes(j.id) && jobActive(j))}
             dataFiles={dataFiles}
             onDataFilesChanged={refreshDataFiles}
           />
@@ -173,6 +210,9 @@ export default function App() {
 
         <h2>Network statistics</h2>
         {spec ? <StatsPanel network={spec.network} /> : null}
+
+        <h2>Jobs</h2>
+        <JobList jobs={jobs} onOpen={(id) => openRun(id)} onCancel={cancelJob} />
 
         <h2>Runs</h2>
         {runs.length === 0 ? (
