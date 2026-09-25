@@ -4,6 +4,7 @@ message: >-
   If you use this software in research, please cite it using the metadata
   below.
 type: software
+license: MIT
 authors:
   - given-names: Alejandro
     family-names: Suarez

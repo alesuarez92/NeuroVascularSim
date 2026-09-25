@@ -3,8 +3,7 @@
 A physiological simulation suite for the brain and the fMRI signal, by the
 NMD Lab (Alejandro Suarez, Ph.D.).
 
-**Status: early development.** Private until the first working models are in
-place. The engine's first piece is in: steady blood flow with red-cell
+**Status: early development**, developed in the open. The engine's first piece is in: steady blood flow with red-cell
 rheology on vascular graphs, validated against analytic cases and against
 Suarez et al. 2021 (J Theor Biol).
 
@@ -61,4 +60,5 @@ data with known ground truth.
 
 ## Author
 
-Alejandro Suarez, Ph.D. All rights reserved (see [LICENSE.txt](LICENSE.txt)).
+Alejandro Suarez, Ph.D. Released under the [MIT licence](LICENSE.txt).
+Contributions, issues and discussion are welcome.

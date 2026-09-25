@@ -132,8 +132,8 @@ web/                React front end (after the service)
   2021a network (≈10% CBF for 30% dilation, and stealing driven by
   phase separation).
 - **Synthetic ground truth** for any analysis method.
-- `pytest` runs locally before every push. CI waits for the owner's approval
-  (private-repository Actions budget; see CLAUDE.md).
+- `pytest` runs locally before every push, and in CI (GitHub Actions) on
+  pushes and pull requests that touch Python code.
 
 ## Build order
 

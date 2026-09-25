@@ -32,7 +32,7 @@ Before any meaningful work, announce one of:
 ## Build and test
 
 - Python engine in `src/neurovascularsim/` (SI units inside; see `docs/architecture.md`).
-- `pip install -e ".[dev]"` then `pytest`. No CI yet (see CI budget below); run the tests locally before every push.
+- `pip install -e ".[dev]"` then `pytest`. CI runs the same (see CI below); run the tests locally before every push.
 
 ## After every checkpoint
 
@@ -43,13 +43,13 @@ Before any meaningful work, announce one of:
 - Lab recordings are the owner's lab property and are never committed. Tests and demos use synthetic data with known ground truth.
 - Published papers (PDFs) are not committed either (publisher copyright); cite them in `docs/`.
 
-## CI budget (owner's rule)
+## CI (owner's rule)
 
-- This repository is **private**: GitHub Actions minutes are limited (free
-  plan: 2,000 per month) and MATLAB actions on private projects may need a
-  MathWorks licensing token. **Ask the owner before adding any CI workflow.**
-- When CI exists: batch changes into few pushes, skip runs for docs-only
-  changes (`paths-ignore`), cancel superseded runs (`concurrency`), keep
-  artifacts short-lived, never add scheduled workflows or larger runners.
-  Run the fast checks locally first (Octave parse / numeric checks).
-
+- The repository is **public** (MIT licence), so GitHub Actions minutes on
+  standard runners are free. CI runs `pytest` on pushes and pull requests
+  that touch Python code.
+- Keep it lean anyway: skip docs-only changes (`paths` filters), cancel
+  superseded runs (`concurrency`), keep artifacts short-lived, no scheduled
+  workflows or larger runners without asking the owner. Run the tests
+  locally before pushing.
+- Ask the owner before adding any *new* workflow.
