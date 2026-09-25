@@ -50,7 +50,7 @@ def test_graph_files_plugin_stays_inside_data_dir(tmp_path, monkeypatch):
     monkeypatch.setattr(io, "DATA_DIR", tmp_path)
     case = registry.create("network", "suarez2021a")
     io.save_graph_csv(case.graph, tmp_path / "nodes.csv", tmp_path / "edges.csv")
-    loaded = registry.create("network", "graph_files")
+    loaded = registry.create("network", "graph_files", prepare=False)
     assert loaded.graph.n_edges == 22 and loaded.meta["needs_boundary_conditions"]
     with pytest.raises(ValueError):
         registry.create("network", "graph_files", nodes_file="../etc/passwd")

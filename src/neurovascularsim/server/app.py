@@ -15,19 +15,26 @@ large networks comes with the realistic 3D graphs.
 
 from __future__ import annotations
 
+import math
 import os
+import re
+import warnings
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+import numpy as np
 
 from .. import __version__, registry
 from ..experiment import ExperimentSpec, RunStore, run_experiment
+from ..vascular import io as vio
+from ..vascular.stats import capillary_branch_order, network_statistics
 
 DEFAULT_RUN_DIR = os.environ.get("NVS_RUN_DIR", "runs")
+MAX_UPLOAD_BYTES = 512 * 2**20
 # The built web app (web/dist in a source checkout), served at "/" if present.
 DEFAULT_WEB_DIR = os.environ.get("NVS_WEB_DIR", str(Path(__file__).resolve().parents[3] / "web" / "dist"))
 
@@ -37,6 +44,17 @@ class NetworkRequest(BaseModel):
     params: dict[str, Any] = {}
 
 
+def _finite(x):
+    """NaN and infinities (undefined statistics) as null, which JSON allows."""
+    if isinstance(x, dict):
+        return {k: _finite(v) for k, v in x.items()}
+    if isinstance(x, (list, tuple)):
+        return [_finite(v) for v in x]
+    if isinstance(x, float) and not math.isfinite(x):
+        return None
+    return x
+
+
 def _plugin_info(kind: str, name: str) -> dict:
     p = registry.get(kind, name)
     return {
@@ -44,6 +62,7 @@ def _plugin_info(kind: str, name: str) -> dict:
         "description": p.description,
         "reference": p.reference,
         "parameters": p.parameters,
+        "choices": p.choices,
     }
 
 
@@ -83,6 +102,44 @@ def create_app(run_dir: str = DEFAULT_RUN_DIR, web_dir: str | None = DEFAULT_WEB
             "inlet_hematocrit": case.inlet_hematocrit,
             "meta": case.meta,
         }
+
+    @app.post("/api/networks/stats")
+    def network_stats(req: NetworkRequest):
+        """Morphometry and capillary topology, for comparison with measurements."""
+        try:
+            case = registry.create("network", req.name, **req.params)
+        except KeyError as e:
+            raise HTTPException(404, str(e)) from None
+        except (TypeError, ValueError) as e:
+            raise HTTPException(422, str(e)) from None
+        # Undefined values (no volume, an empty vessel class) come out as null.
+        with np.errstate(all="ignore"), warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            out = {"statistics": network_statistics(case.graph), "branch_order": capillary_branch_order(case.graph)}
+        return _finite(out)
+
+    @app.get("/api/data-files")
+    def list_data_files():
+        """CSV files available to the 'graph_files' network (the data directory)."""
+        base = vio.DATA_DIR
+        if not base.exists():
+            return []
+        return [{"name": p.name, "size": p.stat().st_size} for p in sorted(base.glob("*.csv"))]
+
+    @app.put("/api/data-files/{name}", status_code=201)
+    async def upload_data_file(name: str, request: Request):
+        """Store an uploaded CSV in the data directory (git-ignored, never committed)."""
+        if not re.fullmatch(r"[A-Za-z0-9._-]{1,120}\.csv", name) or name.startswith("."):
+            raise HTTPException(422, "file name must be letters, digits, . _ - and end in .csv")
+        declared = request.headers.get("content-length", "")
+        if declared.isdigit() and int(declared) > MAX_UPLOAD_BYTES:
+            raise HTTPException(413, f"file larger than {MAX_UPLOAD_BYTES // 2**20} MB")
+        body = await request.body()
+        if len(body) > MAX_UPLOAD_BYTES:
+            raise HTTPException(413, f"file larger than {MAX_UPLOAD_BYTES // 2**20} MB")
+        vio.DATA_DIR.mkdir(parents=True, exist_ok=True)
+        (vio.DATA_DIR / name).write_bytes(body)
+        return {"name": name, "size": len(body)}
 
     @app.post("/api/experiments/validate")
     def validate(spec: dict):

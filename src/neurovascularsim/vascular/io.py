@@ -186,12 +186,34 @@ def _data_path(name: str) -> Path:
         "voxel_size_um": 1.0,
         "crop_lo_um": None,
         "crop_hi_um": None,
+        "depth_axis": 2,
+        "surface": "min",
+        "labels": "auto",
+        "p_arterial_mmhg": 60.0,
+        "p_venous_mmhg": 10.0,
+        "prepare": True,
     },
+    choices={"labels": ["auto", "types", "diameter"], "surface": ["min", "max"], "depth_axis": [0, 1, 2]},
 )
 def graph_files(nodes_file="nodes.csv", edges_file="edges.csv", voxel_size_um=1.0,
-                crop_lo_um=None, crop_hi_um=None) -> NetworkCase:
+                crop_lo_um=None, crop_hi_um=None, depth_axis=2, surface="min", labels="auto",
+                p_arterial_mmhg=60.0, p_venous_mmhg=10.0, prepare=True) -> NetworkCase:
+    """Load, crop, then (``prepare``) set depth, find penetrating trees, label
+    them arterial or venous and fix pressures at their surface ends.
+
+    See :mod:`neurovascularsim.vascular.labeling`. With ``prepare=False`` the
+    graph is returned as read, without boundary conditions (view only).
+    """
+    from .labeling import prepare_network, with_depth
+
     graph = load_graph_csv(_data_path(nodes_file), _data_path(edges_file), voxel_size_um=voxel_size_um)
     if crop_lo_um is not None and crop_hi_um is not None:
         graph = crop(graph, crop_lo_um, crop_hi_um)
-    return NetworkCase(graph=graph, pressure_bc={}, inlet_hematocrit=0.45,
-                       meta={"needs_boundary_conditions": True})
+    if not prepare:
+        return NetworkCase(graph=graph, pressure_bc={}, inlet_hematocrit=0.45,
+                           meta={"needs_boundary_conditions": True})
+    if graph.depth is None:
+        graph = with_depth(graph, axis=depth_axis, surface=surface)
+    case = prepare_network(graph, labels=labels, p_arterial_mmhg=p_arterial_mmhg, p_venous_mmhg=p_venous_mmhg)
+    case.graph.meta.setdefault("volume_mm3", graph.meta.get("volume_mm3"))
+    return case

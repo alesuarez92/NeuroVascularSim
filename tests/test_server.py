@@ -77,3 +77,53 @@ def test_serves_the_web_app_when_built(tmp_path):
 def test_no_web_app_without_build(tmp_path):
     c = TestClient(create_app(run_dir=str(tmp_path), web_dir=str(tmp_path / "missing")))
     assert c.get("/").status_code == 404
+
+
+def test_plugins_list_choices(client):
+    nets = {p["name"]: p for p in client.get("/api/plugins").json()["network"]["plugins"]}
+    assert nets["mouse_cortex_synthetic"]["choices"]["boundary"] == ["penetrating_tops", "pial_tree"]
+
+
+def test_network_stats(client):
+    r = client.post("/api/networks/stats", json={"name": "suarez2021a"})
+    assert r.status_code == 200
+    data = r.json()
+    assert data["statistics"]["n_edges"] == 22
+    assert data["statistics"]["vascular_volume_fraction"] is None  # no volume: undefined, not an error
+    assert data["branch_order"]["mean_order_nearest"] == 1.0
+
+
+@pytest.fixture
+def data_dir(tmp_path, monkeypatch):
+    from neurovascularsim.vascular import io
+
+    d = tmp_path / "data"
+    monkeypatch.setattr(io, "DATA_DIR", d)
+    return d
+
+
+def test_data_file_upload_and_list(client, data_dir):
+    assert client.get("/api/data-files").json() == []
+    r = client.put("/api/data-files/my_nodes.csv", content=b"id,x\n0,1\n")
+    assert r.status_code == 201 and r.json() == {"name": "my_nodes.csv", "size": 9}
+    assert (data_dir / "my_nodes.csv").read_bytes() == b"id,x\n0,1\n"
+    assert client.get("/api/data-files").json() == [{"name": "my_nodes.csv", "size": 9}]
+
+
+@pytest.mark.parametrize("name", ["notes.txt", ".hidden.csv", "a b.csv", "..csv"])
+def test_data_file_bad_names(client, data_dir, name):
+    assert client.put(f"/api/data-files/{name}", content=b"x").status_code == 422
+    assert not data_dir.exists() or not any(data_dir.iterdir())
+
+
+def test_data_file_path_traversal_is_rejected(client, data_dir):
+    r = client.put("/api/data-files/..%2Fescape.csv", content=b"x")
+    assert r.status_code >= 400
+    assert not (data_dir.parent / "escape.csv").exists()
+
+
+def test_data_file_too_large(client, data_dir, monkeypatch):
+    from neurovascularsim.server import app as server
+
+    monkeypatch.setattr(server, "MAX_UPLOAD_BYTES", 4)
+    assert client.put("/api/data-files/big.csv", content=b"12345").status_code == 413

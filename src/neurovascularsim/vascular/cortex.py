@@ -30,6 +30,14 @@ with small jitter; layer boundaries are approximate for mouse S1; the
 density of penetrating vessels per mm^2 is a parameter (default read from
 the networks in Schmid et al. 2017, Table 2) and should be checked against
 the owner's data. Every number here is a parameter.
+
+Calibration: the density of penetrating vessels, their connection spacing
+and the offshoot generations were chosen on a grid to match the capillary
+topology measured by Ji et al. 2021 (mean capillary branch order 3.4 from
+the nearest non-capillary vessel; ~7 capillary branches between arterioles
+and venules), giving ~3.7 and ~6.5. Perfusion was not a calibration target
+because it also depends on rheology; it comes out at about half the
+measured mouse value (see docs/networks.md).
 """
 
 from __future__ import annotations
@@ -63,14 +71,23 @@ class MouseColumnParams:
     capillary_diameter_sd_um: float = 1.0
     tortuosity: float = 1.2  # Smith et al. 2019
     l4_density_boost: float = 0.1  # shallow L4 peak (Blinder et al. 2013)
-    pa_density_per_mm2: float = 9.0  # from Schmid et al. 2017 networks (to verify)
+    pa_density_per_mm2: float = 24.0  # calibrated to capillary topology (Ji et al. 2021); see docs
     av_to_pa_ratio: float = 3.0  # Blinder et al. 2013 (mouse)
     pa_diameter_median_um: float = 11.0  # Blinder et al. 2013
     av_diameter_median_um: float = 9.0  # Blinder et al. 2013
     trunk_terminal_diameter_um: float = 6.0
     connector_diameter_um: float = 6.0
-    branch_spacing_um: float = 25.0
-    connections_per_level: int = 2
+    # Offshoot trees grown from each connection into the capillary mesh:
+    # arteriolar (the arteriole-capillary transition zone; Mughal et al. 2023)
+    # and postcapillary venular. Generations are calibrated so capillary
+    # branch order matches Ji et al. 2021 (mean 3.4; ~7 branches between
+    # penetrating arterioles and venules).
+    arteriolar_offshoot_generations: int = 1
+    venular_offshoot_generations: int = 1
+    arteriolar_offshoot_diameters_um: tuple = (7.0, 6.0, 5.0, 4.5)
+    venular_offshoot_diameters_um: tuple = (8.0, 7.0, 6.0, 5.0)
+    branch_spacing_um: float = 40.0
+    connections_per_level: int = 1
     pa_min_depth_fraction: float = 0.3
     p_in_mmhg: float = 60.0
     p_out_mmhg: float = 10.0
@@ -239,7 +256,56 @@ def _murray_tree(root: int, nodes_xy: np.ndarray, leaf_diam: dict[int, float]):
     return [(parent[v], v, cube[v] ** (1.0 / 3.0)) for v in order if parent[v] >= 0]
 
 
+def _grow_offshoots(cedges, cdiam, ctype, n_cap_nodes, trees) -> None:
+    """Relabel capillary edges as arteriolar or venular offshoot trees (in place).
+
+    For each (seeds, generations, diameters, type): a breadth-first search
+    from the seed nodes; the edge by which a node is first reached at depth g
+    becomes a vessel of generation g. Nodes claimed by one tree are not
+    entered by another, so arteriolar and venular trees never touch.
+    """
+    adj: list[list[tuple[int, int]]] = [[] for _ in range(n_cap_nodes)]
+    for k, (a, b) in enumerate(cedges):
+        adj[a].append((b, k))
+        adj[b].append((a, k))
+    claimed = np.zeros(n_cap_nodes, dtype=bool)
+    for seeds, _, _, _ in trees:
+        claimed[list(seeds)] = True
+    for seeds, generations, diameters, vtype in trees:
+        frontier = list(dict.fromkeys(seeds))
+        for g in range(generations):
+            nxt = []
+            for u in frontier:
+                for v, k in adj[u]:
+                    if not claimed[v] and ctype[k] == VesselType.CAPILLARY:
+                        claimed[v] = True
+                        ctype[k] = vtype
+                        cdiam[k] = diameters[min(g, len(diameters) - 1)]
+                        nxt.append(v)
+            frontier = nxt
+
+
 def build_mouse_column(p: MouseColumnParams) -> NetworkCase:
+    """Build a column whose final capillary length density matches the target.
+
+    Offshoot trees turn some capillaries into arterioles and venules, so the
+    foam is first built to the target and then rebuilt denser by the measured
+    shortfall (usually one extra pass).
+    """
+    target = p.capillary_length_density
+    foam_density = target
+    case = None
+    for _ in range(4):
+        case = _build_mouse_column(p, foam_density)
+        cap = case.graph.vessel_type == VesselType.CAPILLARY
+        achieved = case.graph.length[cap].sum() * 1e3 / (case.graph.meta["volume_mm3"] * 1e3)
+        if abs(achieved / target - 1) < 0.03:
+            break
+        foam_density *= target / achieved
+    return case
+
+
+def _build_mouse_column(p: MouseColumnParams, foam_length_density: float) -> NetworkCase:
     rng = np.random.default_rng(p.seed)
     volume_mm3 = p.size_x_um * p.size_y_um * p.depth_um * 1e-9
 
@@ -250,9 +316,9 @@ def build_mouse_column(p: MouseColumnParams) -> NetworkCase:
         cpos, cedges = _voronoi_foam(p, spacing, np.random.default_rng(p.seed))
         seg = np.linalg.norm(cpos[cedges[:, 0]] - cpos[cedges[:, 1]], axis=1) * p.tortuosity
         density = seg.sum() * 1e-6 / volume_mm3  # m/mm^3
-        if abs(density / p.capillary_length_density - 1) < 0.03:
+        if abs(density / foam_length_density - 1) < 0.03:
             break
-        spacing *= np.sqrt(density / p.capillary_length_density)
+        spacing *= np.sqrt(density / foam_length_density)
 
     positions = [cpos]
     edge_list = [cedges]
@@ -288,6 +354,8 @@ def build_mouse_column(p: MouseColumnParams) -> NetworkCase:
     pa_xy = _surface_points(n_pa, p, rng, np.empty((0, 2)), min_dist)
     av_xy = _surface_points(n_av, p, rng, pa_xy, min_dist)
 
+    seeds: dict[int, list[int]] = {VesselType.PRECAPILLARY_ARTERIOLE: [], VesselType.VENULE: []}
+
     def penetrating(xy, median_d, trunk_type, connector_type):
         tops, top_d = [], []
         for x, y in xy:
@@ -308,6 +376,7 @@ def build_mouse_column(p: MouseColumnParams) -> NetworkCase:
                 chosen = [c for c in np.atleast_1d(cand) if c not in used_capillary_nodes][:picks]
                 for c in chosen:
                     used_capillary_nodes.add(int(c))
+                    seeds[connector_type].append(int(c))
                     add_edges([node, c], p.connector_diameter_um, connector_type)
             tops.append(nodes[0])
             top_d.append(d0)
@@ -316,6 +385,16 @@ def build_mouse_column(p: MouseColumnParams) -> NetworkCase:
     pa_tops, pa_d = penetrating(pa_xy, p.pa_diameter_median_um, VesselType.PENETRATING_ARTERIOLE,
                                 VesselType.PRECAPILLARY_ARTERIOLE)
     av_tops, av_d = penetrating(av_xy, p.av_diameter_median_um, VesselType.ASCENDING_VENULE, VesselType.VENULE)
+
+    # Offshoot trees: breadth-first from the connection points through the
+    # capillary mesh; tree edges of generation g become arteriolar (or
+    # venular) vessels with the diameter of that generation.
+    _grow_offshoots(cedges, diam[0], vtype[0], len(cpos), [
+        (seeds[VesselType.PRECAPILLARY_ARTERIOLE], p.arteriolar_offshoot_generations,
+         p.arteriolar_offshoot_diameters_um, VesselType.PRECAPILLARY_ARTERIOLE),
+        (seeds[VesselType.VENULE], p.venular_offshoot_generations,
+         p.venular_offshoot_diameters_um, VesselType.VENULE),
+    ])
 
     # 3. Boundary conditions: at the penetrating-vessel tops, or through pial
     # trees rooted at an inlet and an outlet on opposite faces.
@@ -410,9 +489,13 @@ _DEFAULTS = asdict(MouseColumnParams())
         "2017 PLoS Comput Biol; Smith et al. 2019 Front Physiol"
     ),
     parameters={k: _DEFAULTS[k] for k in (
-        "size_x_um", "size_y_um", "depth_um", "seed", "pa_density_per_mm2", "av_to_pa_ratio",
-        "capillary_length_density", "capillary_diameter_mean_um", "p_in_mmhg", "p_out_mmhg", "hematocrit",
+        "size_x_um", "size_y_um", "depth_um", "seed", "boundary", "pa_density_per_mm2", "av_to_pa_ratio",
+        "pa_diameter_median_um", "av_diameter_median_um", "branch_spacing_um", "connections_per_level",
+        "arteriolar_offshoot_generations", "venular_offshoot_generations",
+        "capillary_length_density", "capillary_diameter_mean_um", "capillary_diameter_sd_um", "tortuosity",
+        "l4_density_boost", "p_in_mmhg", "p_out_mmhg", "hematocrit",
     )},
+    choices={"boundary": ["penetrating_tops", "pial_tree"]},
 )
 def mouse_cortex_synthetic(**params) -> NetworkCase:
     unknown = set(params) - set(_DEFAULTS)

@@ -58,6 +58,7 @@ class Plugin:
     description: str = ""
     reference: str = ""
     parameters: dict[str, Any] = field(default_factory=dict)
+    choices: dict[str, list] = field(default_factory=dict)
 
 
 _plugins: dict[str, dict[str, Plugin]] = {}
@@ -70,11 +71,13 @@ def register(
     description: str = "",
     reference: str = "",
     parameters: dict[str, Any] | None = None,
+    choices: dict[str, list] | None = None,
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Decorator registering ``factory`` as plugin ``name`` of ``kind``.
 
     ``parameters`` documents the factory's keyword parameters and defaults,
-    so interfaces can show and edit them.
+    and ``choices`` the allowed values of any parameter that takes one of a
+    fixed set, so interfaces can show and edit them.
     """
     if kind not in KINDS:
         raise KeyError(f"unknown plugin kind {kind!r}; known kinds: {sorted(KINDS)}")
@@ -83,7 +86,7 @@ def register(
         bucket = _plugins.setdefault(kind, {})
         if name in bucket and bucket[name].factory is not factory:
             raise ValueError(f"plugin {kind}/{name} is already registered")
-        bucket[name] = Plugin(kind, name, factory, description, reference, dict(parameters or {}))
+        bucket[name] = Plugin(kind, name, factory, description, reference, dict(parameters or {}), dict(choices or {}))
         return factory
 
     return decorator
