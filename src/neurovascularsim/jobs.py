@@ -33,6 +33,7 @@ def _now() -> str:
 
 @dataclass
 class Job:
+    """A queued experiment run and its progress, as reported to interfaces."""
     id: str
     name: str
     status: str = "queued"  # queued, running, done, failed, cancelled
@@ -46,10 +47,12 @@ class Job:
     error: str | None = None
 
     def to_dict(self) -> dict:
+        """The job as plain data (JSON-ready)."""
         return asdict(self)
 
 
 class JobQueue:
+    """Runs experiments on worker threads and saves them to a RunStore."""
     def __init__(self, store: RunStore, workers: int = 1, keep: int = 200):
         self.store = store
         self.keep = keep
@@ -70,10 +73,12 @@ class JobQueue:
         return job
 
     def get(self, job_id: str) -> Job:
+        """The job with this id (KeyError if unknown or forgotten)."""
         with self._lock:
             return self._jobs[job_id]
 
     def list(self) -> list[Job]:
+        """All remembered jobs, newest first."""
         with self._lock:
             return list(reversed(self._jobs.values()))
 
@@ -88,6 +93,7 @@ class JobQueue:
             return job
 
     def shutdown(self) -> None:
+        """Stop running jobs at their next step and wait for the workers to finish."""
         with self._lock:
             for job_id, job in self._jobs.items():
                 if job.status in ACTIVE:
@@ -109,6 +115,7 @@ class JobQueue:
             job.status, job.started = "running", _now()
 
         def progress(stage: str, done: int, total: int) -> None:
+            """Record the run's step; raise Cancelled if the job was cancelled."""
             if stop.is_set():
                 raise Cancelled()
             with self._lock:

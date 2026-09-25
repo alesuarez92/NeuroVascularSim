@@ -38,6 +38,7 @@ VENOUS = (VesselType.VENULE, VesselType.ASCENDING_VENULE, VesselType.PIAL_VEIN)
 
 @dataclass
 class PenetratingTree:
+    """A penetrating vessel tree found in a graph: its edges, entry points, entry diameter and depth."""
     edges: np.ndarray  # edge indices of the tree
     entry_nodes: list  # dangling ends at the surface: where blood enters or leaves
     entry_diameter_um: float

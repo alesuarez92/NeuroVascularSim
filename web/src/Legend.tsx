@@ -2,6 +2,7 @@ import { DIVERGING, SEQUENTIAL } from "./colors";
 import { fmt } from "./units";
 import type { Legend as LegendSpec } from "./viz";
 
+/** The legend of the current colouring: categorical swatches, or a diverging / sequential ramp with its limits. */
 export function Legend({ legend }: { legend: LegendSpec }) {
   return (
     <div className="legend" aria-label="Legend">

@@ -52,6 +52,7 @@ KINDS: dict[str, str] = {
 
 @dataclass(frozen=True)
 class Plugin:
+    """A registered component: its kind, name, factory, documentation, parameters and choices."""
     kind: str
     name: str
     factory: Callable[..., Any]
@@ -83,6 +84,7 @@ def register(
         raise KeyError(f"unknown plugin kind {kind!r}; known kinds: {sorted(KINDS)}")
 
     def decorator(factory: Callable[..., Any]) -> Callable[..., Any]:
+        """Register ``factory`` and return it unchanged."""
         bucket = _plugins.setdefault(kind, {})
         if name in bucket and bucket[name].factory is not factory:
             raise ValueError(f"plugin {kind}/{name} is already registered")
@@ -93,6 +95,7 @@ def register(
 
 
 def get(kind: str, name: str) -> Plugin:
+    """The plugin registered under ``kind``/``name`` (KeyError listing what exists)."""
     try:
         return _plugins[kind][name]
     except KeyError:

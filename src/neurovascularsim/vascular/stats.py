@@ -90,6 +90,7 @@ def capillary_branch_order(graph: VascularGraph) -> dict:
     n = graph.n_nodes
 
     def distance_from(types) -> np.ndarray:
+        """Capillary-edge distance of every node from vessels of the given types."""
         src = np.unique(graph.edges[np.isin(graph.vessel_type, types)].ravel())
         # A super-source (node n) joined to every source node by a unit edge.
         rows = np.concatenate([e[:, 0], np.full(src.size, n)])

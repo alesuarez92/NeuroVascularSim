@@ -49,6 +49,7 @@ class Condition:
 
 @dataclass
 class ExperimentSpec:
+    """What to run: a network, solver options, conditions, and optional oxygen and BOLD models."""
     name: str
     network: Component
     conditions: list[Condition] = field(default_factory=list)
@@ -62,10 +63,12 @@ class ExperimentSpec:
 
     # -- serialisation ---------------------------------------------------
     def to_dict(self) -> dict:
+        """As plain data (JSON-ready)."""
         return asdict(self)
 
     @classmethod
     def from_dict(cls, d: dict) -> "ExperimentSpec":
+        """Parse a spec from plain data (as stored in JSON), checking its version."""
         d = dict(d)
         version = d.get("spec_version", SPEC_VERSION)
         if version != SPEC_VERSION:
@@ -85,9 +88,11 @@ class ExperimentSpec:
 
     @classmethod
     def from_json(cls, text: str) -> "ExperimentSpec":
+        """Parse a spec from JSON text."""
         return cls.from_dict(json.loads(text))
 
     def to_json(self) -> str:
+        """The spec as canonical JSON text (sorted keys)."""
         return json.dumps(self.to_dict(), indent=2, sort_keys=True)
 
     def digest(self) -> str:
@@ -126,6 +131,7 @@ class ExperimentSpec:
 
 @dataclass
 class RunRecord:
+    """A finished run: its spec, provenance, per-condition fields and summaries."""
     id: str
     spec: dict
     created: str
@@ -134,6 +140,7 @@ class RunRecord:
     summary: dict  # label -> relative changes vs baseline
 
     def to_dict(self) -> dict:
+        """As plain data (JSON-ready)."""
         return asdict(self)
 
 
@@ -154,6 +161,7 @@ def _git_commit() -> str | None:
 
 
 def provenance(spec: ExperimentSpec) -> dict:
+    """Where a run came from: engine version, git commit, Python and library versions, spec digest."""
     from . import __version__
 
     return {
@@ -222,6 +230,7 @@ def run_experiment(spec: ExperimentSpec, progress: Callable[[str, int, int], Non
     bold = None if spec.bold is None else BoldParams(**spec.bold)
 
     def solve(case):
+        """Flow (and, if requested, oxygen) for one network case, as fields for the run record."""
         sol = solve_flow(case.graph, case.pressure_bc, inlet_hematocrit=case.inlet_hematocrit, **solver)
         out = _fields(sol)
         out["diameter"] = case.graph.diameter.tolist()
@@ -279,16 +288,22 @@ class RunStore:
 
     def save(self, record: RunRecord) -> None:
         # Write then rename, so readers (e.g. list() while a job saves) never see a partial file.
+        """Save a run record."""
         path = self._path(record.id)
         tmp = path.with_suffix(".json.tmp")
         tmp.write_text(json.dumps(record.to_dict()))
         tmp.replace(path)
 
     def load(self, run_id: str) -> dict:
+        """The run record as a dict."""
+        return json.loads(self.load_bytes(run_id))
+
+    def load_bytes(self, run_id: str) -> bytes:
+        """The run record as stored (JSON), without parsing it."""
         path = self._path(run_id)
         if not path.exists():
             raise KeyError(run_id)
-        return json.loads(path.read_text())
+        return path.read_bytes()
 
     def list(self) -> list[dict]:
         """Brief entries (id, name, created), newest first."""

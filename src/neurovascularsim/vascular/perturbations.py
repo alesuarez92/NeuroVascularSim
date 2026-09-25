@@ -63,10 +63,12 @@ def _select_edges(case: NetworkCase, edges=None, vessel_types=None, depth_range_
     parameters={"edges": [], "vessel_types": [], "depth_range_um": None, "layers": [], "factor": 1.3},
 )
 def scale_diameter(edges=None, vessel_types=None, factor: float = 1.3, depth_range_um=None, layers=None):
+    """Perturbation factory: multiply the diameter of the selected vessels by ``factor``."""
     if factor <= 0:
         raise ValueError("factor must be positive")
 
     def apply(case: NetworkCase) -> NetworkCase:
+        """Return a modified copy of the network case."""
         idx = _select_edges(case, edges, vessel_types, depth_range_um, layers)
         d = case.graph.diameter.copy()
         d[idx] *= factor
@@ -83,11 +85,13 @@ def scale_diameter(edges=None, vessel_types=None, factor: float = 1.3, depth_ran
     parameters={"factor": 1.2, "depth_range_um": None, "layers": []},
 )
 def scale_cmro2(factor: float = 1.2, depth_range_um=None, layers=None):
+    """Perturbation factory: multiply oxygen consumption by ``factor``, optionally in a depth range or layers."""
     if factor < 0:
         raise ValueError("factor must be non-negative")
     entry = {"factor": float(factor), "depth_range_um": depth_range_um, "layers": list(layers or [])}
 
     def apply(case: NetworkCase) -> NetworkCase:
+        """Return a modified copy of the network case."""
         meta = dict(case.meta)
         meta["cmro2_scales"] = [*meta.get("cmro2_scales", []), entry]
         return replace(case, meta=meta)

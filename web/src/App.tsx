@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import {
   api,
   type DataFile,
@@ -16,12 +16,15 @@ import { JobList, runToShow } from "./JobList";
 import { OxygenPanel } from "./OxygenPanel";
 import { ExperimentEditor, defaultSolver } from "./ExperimentEditor";
 import { Legend } from "./Legend";
-import { NetworkView } from "./NetworkView";
 import { SelectionCard } from "./SelectionCard";
 import { StatsPanel } from "./StatsPanel";
 import { fmt, pct, toNlPerMin, toUm } from "./units";
 import { DEFAULT_VIEW, ViewControls, type ViewSettings } from "./ViewControls";
 import { type ColorBy, addEdgeToCondition, colorByKey, colorByOptions, computeView, visibleEdges } from "./viz";
+
+// The 3D viewer (three.js) is the largest part of the app: load it as its own
+// chunk so the page and the forms appear before it has downloaded.
+const NetworkView = lazy(() => import("./NetworkView").then((m) => ({ default: m.NetworkView })));
 
 function defaultSpec(plugins: Plugins): ExperimentSpec {
   const nets = plugins.network?.plugins ?? [];
@@ -44,6 +47,13 @@ function defaultSpec(plugins: Plugins): ExperimentSpec {
 const sameNetwork = (a: ExperimentSpec, b: ExperimentSpec) =>
   JSON.stringify(a.network) === JSON.stringify(b.network);
 
+/**
+ * The whole app: experiment editor and runs on the left, the 3D network with
+ * its view controls in the middle, vessel table and oxygen/BOLD results below.
+ * State lives here; children get values and callbacks. The network is fetched
+ * whenever its name or parameters change; runs are background jobs polled
+ * until they finish.
+ */
 export default function App() {
   const [version, setVersion] = useState<string>("");
   const [plugins, setPlugins] = useState<Plugins | null>(null);
@@ -260,6 +270,7 @@ export default function App() {
         <div className="stage">
           {g && view ? (
             <>
+              <Suspense fallback={<p className="muted center">Loading the 3D viewer…</p>}>
               <NetworkView
                 graph={g}
                 colors={view.colors}
@@ -270,6 +281,7 @@ export default function App() {
                 onHover={(edge, x, y) => setHover(edge === null ? null : { edge, x, y })}
                 onPick={setSelected}
               />
+              </Suspense>
               <Legend legend={view.legend} />
               {selected !== null && selected < g.n_edges && spec && (
                 <SelectionCard

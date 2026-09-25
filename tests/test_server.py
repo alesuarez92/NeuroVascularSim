@@ -154,3 +154,26 @@ def test_invalid_job_is_422(client):
 def test_models_list_oxygen_and_bold_parameters(client):
     m = client.get("/api/models").json()
     assert m["oxygen"]["p50_mmhg"] == 40.2 and m["bold"]["field_t"] == 1.5
+
+
+def test_large_responses_are_compressed(client):
+    r = client.post("/api/networks", json={"name": "mouse_cortex_synthetic", "params": {"size_x_um": 200, "size_y_um": 200, "depth_um": 400}},
+                    headers={"accept-encoding": "gzip"})
+    assert r.status_code == 200 and r.headers.get("content-encoding") == "gzip"
+
+
+def test_networks_are_cached_but_data_files_are_not():
+    from neurovascularsim.server.app import _NetworkCache
+
+    cache = _NetworkCache(size=2)
+    a = cache.get("suarez2021a", {})
+    assert cache.get("suarez2021a", {}) is a
+    cache.get("suarez2021a", {"p_in_mmhg": 50.0})
+    cache.get("suarez2021a", {"p_in_mmhg": 40.0})
+    assert cache.get("suarez2021a", {}) is not a  # evicted (least recently used)
+
+
+def test_saved_run_is_served_as_stored(client):
+    run = client.post("/api/runs", json=EXAMPLE).json()
+    r = client.get(f"/api/runs/{run['id']}")
+    assert r.headers["content-type"].startswith("application/json") and r.json()["id"] == run["id"]

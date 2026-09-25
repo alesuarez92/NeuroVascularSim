@@ -11,6 +11,7 @@ from .experiment import ExperimentSpec, RunStore, run_experiment
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Command-line entry point: ``nvs run SPEC`` and ``nvs serve``."""
     parser = argparse.ArgumentParser(prog="nvs", description="NeuroVascularSim")
     sub = parser.add_subparsers(dest="command", required=True)
 

@@ -80,6 +80,7 @@ def _pries_invitro():
 )
 def _constant(value: float = 1.0):
     def law(diameter, hematocrit):
+        """Relative viscosity (or red-cell split) for the given vessels."""
         return np.full(np.broadcast(np.asarray(diameter), np.asarray(hematocrit)).shape, float(value))
 
     return law
@@ -136,6 +137,7 @@ def _pries_phase():
 )
 def _no_phase():
     def law(fqb, d_alpha, d_beta, d_parent, h_parent):
+        """Relative viscosity (or red-cell split) for the given vessels."""
         return np.asarray(fqb, dtype=float)
 
     return law

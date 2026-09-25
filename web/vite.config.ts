@@ -5,4 +5,7 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   server: { proxy: { "/api": "http://127.0.0.1:8000" } },
+  // The 3D viewer chunk is three.js (~560 kB, ~140 kB compressed), loaded
+  // lazily after the page; it cannot be split further.
+  build: { chunkSizeWarningLimit: 600 },
 });

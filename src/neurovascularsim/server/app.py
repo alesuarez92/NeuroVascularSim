@@ -15,6 +15,7 @@ run synchronously (``/api/runs``, for small networks and scripts).
 
 from __future__ import annotations
 
+import json
 import math
 import os
 import re
@@ -25,6 +26,8 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import numpy as np
@@ -49,8 +52,36 @@ DEFAULT_WEB_DIR = os.environ.get("NVS_WEB_DIR", str(Path(__file__).resolve().par
 
 
 class NetworkRequest(BaseModel):
+    """A network plugin and its parameters."""
+
     name: str
     params: dict[str, Any] = {}
+
+
+class _NetworkCache:
+    """The last few networks built, so viewing a network and computing its
+    statistics (or editing another field) do not rebuild it.
+
+    Networks read from data files are not cached: the files can change.
+    """
+
+    def __init__(self, size: int = 8):
+        self.size = size
+        self._items: dict[str, Any] = {}
+
+    def get(self, name: str, params: dict):
+        """The network case for ``name`` and ``params``, built once and reused."""
+        if name == "graph_files":
+            return registry.create("network", name, **params)
+        key = json.dumps([name, params], sort_keys=True, default=str)
+        if key in self._items:
+            self._items[key] = self._items.pop(key)  # most recently used last
+            return self._items[key]
+        case = registry.create("network", name, **params)
+        self._items[key] = case
+        while len(self._items) > self.size:
+            self._items.pop(next(iter(self._items)))
+        return case
 
 
 def _finite(x):
@@ -77,6 +108,7 @@ def _plugin_info(kind: str, name: str) -> dict:
 
 def create_app(run_dir: str = DEFAULT_RUN_DIR, web_dir: str | None = DEFAULT_WEB_DIR,
                workers: int = DEFAULT_WORKERS) -> FastAPI:
+    """The API (and the built web app, if present) over a run directory."""
     store = RunStore(run_dir)
     jobs = JobQueue(store, workers=workers)
 
@@ -87,6 +119,9 @@ def create_app(run_dir: str = DEFAULT_RUN_DIR, web_dir: str | None = DEFAULT_WEB
 
     app = FastAPI(title="NeuroVascularSim", version=__version__, lifespan=lifespan)
     app.state.jobs = jobs
+    networks = _NetworkCache()
+    # Graphs and run records are megabytes of JSON; compressed they are 3-4 times smaller.
+    app.add_middleware(GZipMiddleware, minimum_size=2048)
     # The front end may be served from another origin during development.
     app.add_middleware(
         CORSMiddleware,
@@ -97,10 +132,12 @@ def create_app(run_dir: str = DEFAULT_RUN_DIR, web_dir: str | None = DEFAULT_WEB
 
     @app.get("/api/health")
     def health():
+        """Liveness check and engine version."""
         return {"status": "ok", "version": __version__}
 
     @app.get("/api/plugins")
     def plugins():
+        """Every registered plugin by kind, with parameters, defaults and choices."""
         return {
             kind: {"contract": registry.KINDS[kind], "plugins": [_plugin_info(kind, n) for n in names]}
             for kind, names in registry.available().items()
@@ -121,8 +158,9 @@ def create_app(run_dir: str = DEFAULT_RUN_DIR, web_dir: str | None = DEFAULT_WEB
 
     @app.post("/api/networks")
     def network(req: NetworkRequest):
+        """The network's graph, boundary conditions and metadata, for display."""
         try:
-            case = registry.create("network", req.name, **req.params)
+            case = networks.get(req.name, req.params)
         except KeyError as e:
             raise HTTPException(404, str(e)) from None
         except (TypeError, ValueError) as e:
@@ -142,7 +180,7 @@ def create_app(run_dir: str = DEFAULT_RUN_DIR, web_dir: str | None = DEFAULT_WEB
         and capillaries are vessels at most 7 um wide (Ji et al. 2021).
         """
         try:
-            case = registry.create("network", req.name, **req.params)
+            case = networks.get(req.name, req.params)
         except KeyError as e:
             raise HTTPException(404, str(e)) from None
         except (TypeError, ValueError) as e:
@@ -184,6 +222,7 @@ def create_app(run_dir: str = DEFAULT_RUN_DIR, web_dir: str | None = DEFAULT_WEB
 
     @app.post("/api/experiments/validate")
     def validate(spec: dict):
+        """Check an experiment spec without running it."""
         try:
             ExperimentSpec.from_dict(spec).validate()
         except (KeyError, TypeError, ValueError) as e:
@@ -192,6 +231,7 @@ def create_app(run_dir: str = DEFAULT_RUN_DIR, web_dir: str | None = DEFAULT_WEB
 
     @app.post("/api/runs", status_code=201)
     def create_run(spec: dict):
+        """Run an experiment now and save it (for small networks and scripts; see /api/jobs)."""
         try:
             parsed = ExperimentSpec.from_dict(spec)
             record = run_experiment(parsed)
@@ -210,10 +250,12 @@ def create_app(run_dir: str = DEFAULT_RUN_DIR, web_dir: str | None = DEFAULT_WEB
 
     @app.get("/api/jobs")
     def list_jobs():
+        """Background jobs, newest first."""
         return [j.to_dict() for j in jobs.list()]
 
     @app.get("/api/jobs/{job_id}")
     def get_job(job_id: str):
+        """A job's status, progress and, when done, its run id."""
         try:
             return jobs.get(job_id).to_dict()
         except KeyError:
@@ -221,6 +263,7 @@ def create_app(run_dir: str = DEFAULT_RUN_DIR, web_dir: str | None = DEFAULT_WEB
 
     @app.delete("/api/jobs/{job_id}")
     def cancel_job(job_id: str):
+        """Cancel a queued or running job (finished jobs are left as they are)."""
         try:
             return jobs.cancel(job_id).to_dict()
         except KeyError:
@@ -228,12 +271,14 @@ def create_app(run_dir: str = DEFAULT_RUN_DIR, web_dir: str | None = DEFAULT_WEB
 
     @app.get("/api/runs")
     def list_runs():
+        """Saved runs (id, name, date), newest first."""
         return store.list()
 
     @app.get("/api/runs/{run_id}")
     def get_run(run_id: str):
+        """A saved run: spec, provenance, results and summaries (served as stored)."""
         try:
-            return store.load(run_id)
+            return Response(store.load_bytes(run_id), media_type="application/json")
         except KeyError:
             raise HTTPException(404, f"no run {run_id}") from None
 

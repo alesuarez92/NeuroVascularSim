@@ -62,13 +62,16 @@ class VascularGraph:
 
     @property
     def n_nodes(self) -> int:
+        """Number of nodes."""
         return self.positions.shape[0]
 
     @property
     def n_edges(self) -> int:
+        """Number of edges."""
         return self.edges.shape[0]
 
     def validate(self) -> None:
+        """Raise ValueError if array shapes, indices or values are inconsistent."""
         m = self.n_edges
         for name in ("diameter", "length", "vessel_type"):
             if getattr(self, name).shape != (m,):

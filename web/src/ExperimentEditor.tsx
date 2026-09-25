@@ -56,6 +56,11 @@ function parseTargets(text: string): (string | number)[] {
     .map((s) => (/^\d+$/.test(s) ? Number(s) : s));
 }
 
+/**
+ * The experiment form: network and its parameters, solver, oxygen and BOLD
+ * models, and the conditions compared with the baseline. The JSON view edits
+ * the full spec, for anything the form does not cover.
+ */
 export function ExperimentEditor({ plugins, spec, onChange, onRun, running, dataFiles, onDataFilesChanged, models }: Props) {
   const networks = plugins.network?.plugins ?? [];
   const net = networks.find((p) => p.name === spec.network.name);

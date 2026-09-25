@@ -32,7 +32,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 from scipy.sparse import diags, identity, kron
-from scipy.sparse.linalg import cg
+from scipy.sparse.linalg import LinearOperator, cg
 
 from .flow import FlowSolution
 from .graph import VascularGraph, VesselType
@@ -43,6 +43,7 @@ ARTERIAL = (VesselType.PIAL_ARTERY, VesselType.PENETRATING_ARTERIOLE, VesselType
 
 @dataclass
 class OxygenParams:
+    """Oxygen-transport parameters: blood, tissue, numerics (defaults: mouse cortex; see the module docstring)."""
     inlet_po2_mmhg: float = 100.0  # pial arterioles (Sakadzic et al. 2014)
     p50_mmhg: float = 40.2  # C57BL/6 mice (Sakadzic et al. 2014)
     hill_n: float = 2.59  # C57BL/6 mice (Sakadzic et al. 2014)
@@ -62,6 +63,7 @@ class OxygenParams:
 
 @dataclass
 class OxygenSolution:
+    """Steady oxygen: vessel PO2 and saturation, node PO2, the tissue PO2 grid and a summary."""
     po2: np.ndarray  # (n_edges,) mean vessel PO2, mmHg
     so2: np.ndarray  # (n_edges,) mean hemoglobin saturation
     node_po2: np.ndarray  # (n_nodes,) mmHg
@@ -77,6 +79,7 @@ class OxygenSolution:
 # -- blood -----------------------------------------------------------------------------------
 
 def saturation(p, p50, n):
+    """Hill hemoglobin saturation at PO2 ``p`` (mmHg)."""
     p = np.maximum(np.asarray(p, dtype=float), 0.0)
     pn = p**n
     return pn / (pn + p50**n)
@@ -96,13 +99,31 @@ class _Blood:
         self.chb = prm.hb_capacity_mM  # mol/m^3 of red cells
 
     def content(self, p, h):
+        """Oxygen content (mol/m^3 of blood) at PO2 ``p`` and discharge hematocrit ``h``."""
         return h * self.chb * saturation(p, self.p50, self.n) + self.alpha * np.maximum(p, 0.0)
 
     def slope(self, p, h):
+        """dC/dP: change of content per mmHg."""
         return h * self.chb * _dsat(p, self.p50, self.n) + self.alpha
 
     def po2(self, c, h, guess):
-        """Invert C(P, H) = c (monotone in P): safeguarded Newton."""
+        """Invert C(P, H) = c. The Hill curve inverts in closed form, which gives a
+        starting point that three Newton steps polish; the rare values that have
+        not converged (e.g. almost no red cells) go to the safeguarded solver."""
+        hi = c / self.alpha  # C >= alpha P
+        a = h * self.chb
+        s = np.clip((c - self.alpha * np.clip(guess, 0.0, hi)) / np.maximum(a, 1e-300), 1e-12, 1 - 1e-12)
+        p = np.clip(np.where(a * 1e3 > self.alpha, self.p50 * (s / (1 - s)) ** (1 / self.n), guess), 0.0, hi)
+        for _ in range(3):
+            p = np.clip(p - (self.content(p, h) - c) / self.slope(p, h), 0.0, hi)
+        # Converged when the next Newton correction is below 1e-6 mmHg.
+        bad = ~(np.abs((self.content(p, h) - c) / self.slope(p, h)) < 1e-6)
+        if bad.any():
+            p[bad] = self._po2_safeguarded(c[bad], h[bad], p[bad])
+        return p
+
+    def _po2_safeguarded(self, c, h, guess):
+        """Invert C(P, H) = c (monotone in P): Newton with bisection fallback."""
         lo = np.zeros_like(c)
         hi = np.maximum(c / self.alpha, 1.0) + 1.0  # C >= alpha P
         p = np.clip(guess, lo, hi)
@@ -216,21 +237,25 @@ class _Grid:
 
     @property
     def size(self):
+        """Number of voxels."""
         return int(np.prod(self.shape))
 
     def voxel_of(self, pts):
+        """Flat voxel index of each point (clipped to the grid)."""
         ijk = np.floor((pts - self.origin) / self.voxel).astype(np.int64)
         for i in range(3):
             np.clip(ijk[:, i], 0, self.shape[i] - 1, out=ijk[:, i])
         return np.ravel_multi_index(ijk.T, self.shape)
 
     def centers(self):
+        """Voxel centres (m), in flat-index order."""
         axes = [self.origin[i] + (np.arange(self.shape[i]) + 0.5) * self.voxel for i in range(3)]
         return np.stack(np.meshgrid(*axes, indexing="ij"), axis=-1).reshape(-1, 3)
 
     def neg_laplacian(self):
         """-Laplacian with closed (no-flux) faces, 1/m^2."""
         def one_d(n):
+            """1D no-flux Laplacian stencil (unscaled) on ``n`` points."""
             if n == 1:
                 return diags([0.0], [0], shape=(1, 1))
             main = np.full(n, 2.0)
@@ -300,6 +325,7 @@ def solve_oxygen(graph: VascularGraph, flow: FlowSolution, params: OxygenParams 
     v_vox = grid.voxel**3
     m0 = cmro2_field(graph, grid, prm, cmro2_scales)
     neg_lap = grid.neg_laplacian() * d_alpha
+    lap_diag = neg_lap.diagonal()
 
     tissue = np.full(grid.size, 0.5 * prm.inlet_po2_mmhg)
     m, max_steps = net.step_voxel.shape
@@ -322,8 +348,11 @@ def solve_oxygen(graph: VascularGraph, flow: FlowSolution, params: OxygenParams 
         p0 = np.maximum(tissue, 0.0)
         m_now = m0 * p0 / (p0 + prm.km_mmhg)
         m_slope = m0 * prm.km_mmhg / (p0 + prm.km_mmhg) ** 2
-        a = neg_lap + diags(m_slope + kv)
-        new, _ = cg(a, kvpv - m_now + m_slope * p0, x0=tissue, rtol=1e-8, maxiter=2000)
+        # A = -D alpha lap + diag(d): applied without assembling it, Jacobi-preconditioned.
+        d = m_slope + kv
+        a = LinearOperator(neg_lap.shape, matvec=lambda x, d=d: neg_lap @ x + d * x, dtype=float)
+        jacobi = LinearOperator(neg_lap.shape, matvec=lambda x, inv=1.0 / (lap_diag + d): inv * x, dtype=float)
+        new, _ = cg(a, kvpv - m_now + m_slope * p0, x0=tissue, rtol=1e-8, maxiter=2000, M=jacobi)
         new = np.clip(new, 0.0, prm.inlet_po2_mmhg)
         change = float(np.max(np.abs(new - tissue)))
         history.append(change)
@@ -362,6 +391,7 @@ class _Anderson:
         self.fs: list[np.ndarray] = []
 
     def step(self, x: np.ndarray, tx: np.ndarray, beta: float) -> np.ndarray:
+        """Next iterate from the current one ``x`` and its image ``tx``, mixed by ``beta``."""
         f = tx - x
         self.xs.append(x.copy())
         self.fs.append(f)

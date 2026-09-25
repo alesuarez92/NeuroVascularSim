@@ -46,6 +46,7 @@ CLASSES = {
 
 @dataclass
 class BoldParams:
+    """Acquisition and signal-model parameters of the BOLD model (defaults: 1.5 T, TE 40 ms)."""
     field_t: float = 1.5
     te_ms: float = 40.0
     theta0_per_s_at_1p5t: float = 40.3  # Obata et al. 2004 (via Stephan et al. 2007)
@@ -120,6 +121,7 @@ def bold_profile(graph: VascularGraph, base_diameter, base_so2, cond_diameter, c
     base_y, cond_y = np.asarray(base_so2), np.asarray(cond_so2)
 
     def signal(d, y):
+        """Extra- and intravascular signal per slab for given diameters and saturations."""
         v, deoxy, w, edge_of, sl, slab_volume = _slab_terms(graph, d, y, prm, slab, n_slabs, area)
         iv = _intravascular(prm, w, edge_of, sl, y, n_slabs, slab_volume)
         return _signal(prm, v, deoxy, iv)

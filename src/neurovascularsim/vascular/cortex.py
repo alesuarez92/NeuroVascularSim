@@ -64,6 +64,7 @@ LAYER_NAMES = ("L1", "L2/3", "L4", "L5", "L6")
 
 @dataclass
 class MouseColumnParams:
+    """Every parameter of the synthetic mouse column; units in the names, sources in the comments."""
     size_x_um: float = 600.0
     size_y_um: float = 600.0
     depth_um: float = 1200.0  # mean mouse cortical depth (Schmid et al. 2017)
@@ -408,6 +409,7 @@ def _build_mouse_column(p: MouseColumnParams, foam_length_density: float) -> Net
     used_capillary_nodes: set[int] = set()
 
     def add_nodes(xyz):
+        """Append nodes at ``xyz`` (um); return their indices."""
         nonlocal n_nodes
         xyz = np.atleast_2d(xyz)
         idx = np.arange(n_nodes, n_nodes + len(xyz))
@@ -416,6 +418,7 @@ def _build_mouse_column(p: MouseColumnParams, foam_length_density: float) -> Net
         return idx
 
     def add_edges(pairs, d_um, t, length_um=None):
+        """Append edges with diameter (um), type and length (um; default the straight distance)."""
         pairs = np.atleast_2d(np.asarray(pairs, dtype=np.int64))
         allpos = np.vstack(positions)
         euclid = np.linalg.norm(allpos[pairs[:, 0]] - allpos[pairs[:, 1]], axis=1)
@@ -435,6 +438,7 @@ def _build_mouse_column(p: MouseColumnParams, foam_length_density: float) -> Net
     seeds: dict[int, list[int]] = {VesselType.PRECAPILLARY_ARTERIOLE: [], VesselType.VENULE: []}
 
     def penetrating(xy, median_d, trunk_type, connector_type):
+        """Grow penetrating trunks at the surface points ``xy`` and connect them to the bed; return their tops and diameters."""
         tops, top_d = [], []
         for x, y in xy:
             frac = rng.uniform(p.pa_min_depth_fraction, 1.0)
@@ -579,6 +583,7 @@ _DEFAULTS = asdict(MouseColumnParams())
     choices={"boundary": ["penetrating_tops", "pial_tree"], "capillary_bed": ["nearest_neighbour", "foam"]},
 )
 def mouse_cortex_synthetic(**params) -> NetworkCase:
+    """Network plugin: a synthetic mouse cortical column (see MouseColumnParams)."""
     unknown = set(params) - set(_DEFAULTS)
     if unknown:
         raise TypeError(f"unknown parameters {sorted(unknown)}")
