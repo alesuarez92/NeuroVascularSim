@@ -48,3 +48,18 @@ def test_phase_separation_threshold():
     # Below X0 no red cells enter the branch (plasma skimming).
     x0 = 0.964 * (1 - 0.45) / 10.0
     assert phase_separation_pries(0.5 * x0, 5 * UM, 10 * UM, 10 * UM, 0.45) == 0.0
+
+
+def test_invitro_viscosity_law():
+    """Pries et al. 1992: the Fahraeus-Lindqvist minimum near 5-7 um, and far
+    below the in-vivo law in capillaries (no endothelial surface layer)."""
+    import numpy as np
+
+    from neurovascularsim.vascular.rheology import viscosity_pries_invitro, viscosity_pries_invivo
+
+    d = np.array([4, 6, 10, 30, 100, 500]) * 1e-6
+    mu = viscosity_pries_invitro(d, np.full(d.size, 0.45))
+    assert mu[1] < mu[0] and mu[1] < mu[-1]  # minimum at small diameters
+    assert 2.0 < mu[0] < 2.6 and 2.8 < mu[-1] < 3.4  # ~3.2 in wide tubes at Hct 0.45
+    assert viscosity_pries_invitro(6e-6, 0.0) == pytest.approx(1.0)  # plasma
+    assert viscosity_pries_invivo(4e-6, 0.45) > 5 * viscosity_pries_invitro(4e-6, 0.45)

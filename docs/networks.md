@@ -88,48 +88,52 @@ Model values are the mean over seeds, with the range in brackets.
 | Arteriole-to-venule path (median) | 9 [8–10] branches | ~7 | Ji 2021 |
 | Capillary share of vascular length | 0.90 | 0.959 | Ji 2021 |
 
-**Inconsistent: perfusion**
+**Perfusion: depends on the viscosity law**
 
-| Quantity | Model | Measured |
+| Viscosity law | Perfusion (mL/100 g/min) | Mean capillary velocity | Measured |
+|---|---|---|---|
+| In vitro (Pries et al. 1992), **default for cortical networks** | 97–111 (seeds 0–1, with or without phase separation) | 0.65–0.72 mm/s | ~100; 0.5–1.5 mm/s (Schmid 2017, from the literature) |
+| In vivo (Pries et al. 1994) | 15–22 | ~0.08 mm/s | |
+
+### Why the viscosity law decides perfusion
+
+The two laws differ mostly in narrow vessels:
+
+| Diameter (discharge hematocrit 0.45) | In vitro | In vivo |
 |---|---|---|
-| Perfusion (in-vivo viscosity law, inflow hematocrit 0.45) | 15–22 mL/100 g/min | roughly 100 |
-| Median capillary velocity | ~0.02 mm/s | ~0.5–1.5 mm/s (Schmid 2017, from the literature) |
+| 4 µm | 2.3 | 17.7 |
+| 10 µm | 1.3 | 5.9 |
+| 100 µm | 2.4 | 2.5 |
 
-### Why perfusion is low (diagnosis, open decision)
+The in-vivo law carries the endothelial surface layer, as fitted in rat
+mesentery.
 
-The network is not the main cause. With plasma viscosity, the same network
-gives a median capillary velocity of 0.25 mm/s (mean 0.76 mm/s). The
-in-vivo viscosity law (Pries et al. 1994, as implemented and checked)
-predicts a relative viscosity of ~18 in a 4 µm capillary at a discharge
-hematocrit of 0.45, and capillaries then take about half of the pressure
-drop.
+The network itself is not the limit. With plasma viscosity it gives 175
+mL/100 g/min. A Poiseuille estimate shows why the in-vivo law fails here: at
+the measured ~1 mm/s, a 4 µm capillary with a relative viscosity of 18 would
+need ~20 mmHg per 60 µm segment. That is impossible across ~7 segments within
+the 50 mmHg arteriole-to-venule drop.
 
-A Poiseuille estimate shows the conflict: an 11 µm penetrating arteriole
-500 µm long cannot carry the ~1 nL/s that normal perfusion needs within a
-physiological pressure drop.
-
-Sensitivity of perfusion (seed 0, no phase separation; the baseline is
-16.6 mL/100 g/min):
+With the in-vivo law, no single documented correction closes the gap (seed 0,
+no phase separation, baseline 16.6):
 
 | Change | Perfusion |
 |---|---|
 | Trunks 1.3 × wider (a possible fixed-tissue shrinkage) | 25.9 |
-| Trunks taper to 8 µm instead of 6 µm | 22.1 |
 | Capillaries 5 µm mean instead of 4 µm | 29.5 |
 | Inflow discharge hematocrit 0.30 | 24.1 |
-| Red-cell phase separation (inflow 0.45 / 0.30) | 16.2 / 24.0 |
-| Trunks 1.3 × wider, taper to 8 µm, hematocrit 0.30 | 37.2 |
+| Trunks 1.3 × wider, taper to 8 µm, 5 µm capillaries, hematocrit 0.30 | 77.6 |
 
-No single documented correction closes the gap. The likely causes are:
-- vessel diameters measured in fixed tissue (Blinder 2013; Adams 2018 did
-  not correct for shrinkage) combined with a viscosity law fitted in the
-  rat mesentery;
-- how the hematocrit enters the law. Schmid et al. 2017 set a *tube*
-  hematocrit of 0.3 at the inflows, and they rescaled capillary diameters to
-  4.0 ± 1.0 µm.
+The owner decided on the in-vitro law as the default for cortical networks
+(synthetic and reconstructed). With the measured morphology it reproduces
+measured perfusion and capillary velocities with no tuning. The in-vivo law
+remains selectable, and the Suarez et al. 2021 network keeps it, as in that
+paper.
 
-Which correction to adopt is a modelling decision. It is left open, and
-every factor above is a parameter.
+Median capillary velocity (0.16–0.26 mm/s) is lower than the mean because
+flow in the bed is heterogeneous. Many capillaries carry little flow, and
+in-vivo velocity measurements favour the capillaries with visible red-cell
+flow.
 
 ### Other known gaps
 

@@ -23,6 +23,16 @@ const VESSEL_TYPES = [
   "ASCENDING_VENULE",
 ];
 
+/**
+ * Default solver per network: the in-vitro viscosity law for cortical
+ * networks (it reproduces measured perfusion with measured morphology; see
+ * docs/networks.md), the in-vivo law for the Suarez et al. 2021 network as in
+ * that paper.
+ */
+export function defaultSolver(network: string): Record<string, unknown> {
+  return { viscosity: network === "suarez2021a" ? "pries_invivo" : "pries_invitro", phase_separation: "pries" };
+}
+
 /** A starting condition that makes sense for each kind of network. */
 function defaultConditions(network: string): Condition[] {
   if (network === "suarez2021a") {
@@ -76,6 +86,7 @@ export function ExperimentEditor({ plugins, spec, onChange, onRun, running, data
             set({
               name: p?.name === "suarez2021a" ? "Arterial blood stealing" : `Experiment on ${e.target.value}`,
               network: { name: e.target.value, params: { ...(p?.parameters ?? {}) } },
+              solver: defaultSolver(e.target.value),
               conditions: defaultConditions(e.target.value),
             });
           }}

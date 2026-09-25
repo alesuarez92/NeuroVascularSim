@@ -42,6 +42,36 @@ def _pries_invivo():
     return viscosity_pries_invivo
 
 
+def viscosity_pries_invitro(diameter, hematocrit):
+    """In-vitro apparent viscosity relative to plasma (Pries et al. 1992).
+
+    Blood in glass tubes: the Fahraeus-Lindqvist effect without the
+    endothelial surface layer, so small vessels are far less viscous than
+    under the in-vivo law (about 2.3 against 18 at 4 um and hematocrit 0.45).
+
+    Args:
+        diameter: vessel diameter, m (array).
+        hematocrit: discharge hematocrit (array, 0–1).
+    """
+    d = np.asarray(diameter, dtype=float) / UM
+    h = np.asarray(hematocrit, dtype=float)
+    eta45 = 220.0 * np.exp(-1.3 * d) + 3.2 - 2.44 * np.exp(-0.06 * d**0.645)
+    s = 1.0 / (1.0 + 1e-11 * d**12)
+    c = (0.8 + np.exp(-0.075 * d)) * (-1.0 + s) + s
+    shape = ((1.0 - h) ** c - 1.0) / ((1.0 - 0.45) ** c - 1.0)
+    return 1.0 + (eta45 - 1.0) * shape
+
+
+@registry.register(
+    "viscosity",
+    "pries_invitro",
+    description="In-vitro apparent viscosity vs diameter and hematocrit (no endothelial surface layer).",
+    reference="Pries et al. 1992 Am J Physiol 263:H1770",
+)
+def _pries_invitro():
+    return viscosity_pries_invitro
+
+
 @registry.register(
     "viscosity",
     "constant",

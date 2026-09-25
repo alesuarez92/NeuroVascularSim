@@ -160,3 +160,14 @@ def test_tissue_to_vessel_distance_matches_ji_2021():
     d = tissue_vessel_distance(g, n_samples=5000)
     assert 11.0 < d["mean_um"] < 16.0
     assert tissue_vessel_distance(registry.create("network", "suarez2021a").graph) is None  # planar
+
+
+def test_perfusion_with_invitro_viscosity_matches_measurements(column):
+    """With measured morphology and the in-vitro law, cortical perfusion is
+    near the measured ~100 mL/100 g/min (the in-vivo law gives ~20; see
+    docs/networks.md)."""
+    g = column.graph
+    sol = solve_flow(g, column.pressure_bc, inlet_hematocrit=0.45, viscosity="pries_invitro", phase_separation="none")
+    inflow = sum(np.abs(sol.flow[(g.edges == n).any(axis=1)]).sum() for n in column.meta["sources"])
+    perfusion = inflow * 6e7 / (g.meta["volume_mm3"] * 1e-3 * 1.05) * 100  # mL / 100 g / min
+    assert 60 < perfusion < 150

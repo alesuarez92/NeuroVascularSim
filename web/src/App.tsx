@@ -13,7 +13,7 @@ import {
 import { SEGMENT_LABELS } from "./colors";
 import { EdgeTable } from "./EdgeTable";
 import { JobList, runToShow } from "./JobList";
-import { ExperimentEditor } from "./ExperimentEditor";
+import { ExperimentEditor, defaultSolver } from "./ExperimentEditor";
 import { Legend } from "./Legend";
 import { NetworkView } from "./NetworkView";
 import { SelectionCard } from "./SelectionCard";
@@ -29,7 +29,7 @@ function defaultSpec(plugins: Plugins): ExperimentSpec {
     name: "Arterial blood stealing",
     description: "Dilate one daughter arteriole by 30% and compare with the baseline.",
     network: { name: net?.name ?? "", params: { ...(net?.parameters ?? {}) } },
-    solver: { viscosity: "pries_invivo", phase_separation: "pries" },
+    solver: defaultSolver(net?.name ?? ""),
     conditions: [
       {
         label: "dilate_active_30pct",
