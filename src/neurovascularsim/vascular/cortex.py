@@ -123,6 +123,8 @@ class MouseColumnParams:
     adapt_q_ref_nl_min: float = 0.1
     adapt_conduction_length_um: float = 17300.0
     adapt_min_diameter_um: float = 2.5
+    adapt_scope: str = "capillaries"
+    tissue_pressure_mmhg: float = 0.0
 
 
 def layer_of_depth(depth_um: np.ndarray) -> np.ndarray:
@@ -399,7 +401,8 @@ def build_mouse_column(p: MouseColumnParams) -> NetworkCase:
         case, _ = adapt_diameters(case, AdaptationParams(
             steps=p.adapt_steps, metabolic_signal=p.adapt_metabolic_signal, k_m=p.adapt_k_m, k_s=p.adapt_k_s,
             tau_ref_dyn_cm2=p.adapt_tau_ref_dyn_cm2, q_ref_nl_min=p.adapt_q_ref_nl_min,
-            conduction_length_um=p.adapt_conduction_length_um, min_diameter_um=p.adapt_min_diameter_um))
+            conduction_length_um=p.adapt_conduction_length_um, min_diameter_um=p.adapt_min_diameter_um,
+            scope=p.adapt_scope, tissue_pressure_mmhg=p.tissue_pressure_mmhg))
     return case
 
 
@@ -614,8 +617,10 @@ _DEFAULTS = asdict(MouseColumnParams())
         "capillary_min_distance_fraction", "capillary_edge_noise",
         "structural_adaptation", "adapt_steps", "adapt_metabolic_signal", "adapt_k_m", "adapt_k_s",
         "adapt_tau_ref_dyn_cm2", "adapt_q_ref_nl_min", "adapt_conduction_length_um", "adapt_min_diameter_um",
+        "adapt_scope", "tissue_pressure_mmhg",
     )},
-    choices={"boundary": ["penetrating_tops", "pial_tree"], "capillary_bed": ["nearest_neighbour", "foam"]},
+    choices={"boundary": ["penetrating_tops", "pial_tree"], "capillary_bed": ["nearest_neighbour", "foam"],
+             "adapt_scope": ["capillaries", "microvessels", "all"]},
 )
 def mouse_cortex_synthetic(**params) -> NetworkCase:
     """Network plugin: a synthetic mouse cortical column (see MouseColumnParams)."""

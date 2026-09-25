@@ -208,3 +208,20 @@ def test_structural_adaptation_evens_out_capillary_flow():
         return v.std() / v.mean()
 
     assert speed_cv(after) < speed_cv(before)
+
+
+def test_adaptation_scope_and_tissue_pressure():
+    from neurovascularsim.vascular.adaptation import AdaptationParams, adapt_diameters
+
+    case = registry.create("network", "mouse_cortex_synthetic", size_x_um=250, size_y_um=250, depth_um=400, seed=7)
+    g = case.graph
+    offshoots = np.isin(g.vessel_type, [VesselType.PRECAPILLARY_ARTERIOLE, VesselType.VENULE])
+    caps_only, _ = adapt_diameters(case, AdaptationParams(steps=40))
+    np.testing.assert_allclose(caps_only.graph.diameter[offshoots], g.diameter[offshoots])
+    micro, _ = adapt_diameters(case, AdaptationParams(steps=40, scope="microvessels"))
+    assert not np.allclose(micro.graph.diameter[offshoots], g.diameter[offshoots])
+    # Tissue pressure lowers the transmural pressure and so changes the equilibrium.
+    icp, _ = adapt_diameters(case, AdaptationParams(steps=40, tissue_pressure_mmhg=8.0))
+    assert not np.allclose(icp.graph.diameter, caps_only.graph.diameter)
+    with pytest.raises(ValueError):
+        adapt_diameters(case, AdaptationParams(scope="bogus"))

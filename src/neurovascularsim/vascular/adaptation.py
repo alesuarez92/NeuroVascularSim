@@ -37,14 +37,18 @@ Differences from the published model, stated plainly:
 - No pruning: diameters are floored at ``min_diameter_um`` (2.5 um, the
   lower bound of the column's capillary diameters) instead of removing
   vessels below 3 um.
-- Penetrating arterioles and ascending venules (and pial vessels) keep their
-  measured diameters by default (``fixed_types``); a model choice.
+- Which vessels adapt is set by ``scope``: "capillaries" (default), "microvessels"
+  (everything below the penetrating trunks, including the arteriolar and
+  venular offshoots) or "all". ``adapt_types`` overrides it with an explicit
+  list of vessel types.
+- The pressure stimulus uses the transmural pressure, blood pressure minus
+  ``tissue_pressure_mmhg`` (default 0, i.e. no tissue pressure).
 - Flow during adaptation uses the in-vitro viscosity law without phase
   separation (fast); the final network is solved with any laws.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, replace
 
 import numpy as np
 
@@ -73,8 +77,17 @@ class AdaptationParams:
     metabolic_signal: float = 0.1  # per um of vessel; calibrated to capillary diameter 4 +/- 1 um (see module doc)
     min_diameter_um: float = 2.5  # floor instead of pruning (model choice)
     tolerance: float = 1e-3  # stop when the median |S_tot| of adapting vessels falls below this
-    fixed_types: tuple = field(default=(VesselType.PENETRATING_ARTERIOLE, VesselType.ASCENDING_VENULE,
-                                        VesselType.PIAL_ARTERY, VesselType.PIAL_VEIN))
+    scope: str = "capillaries"  # see SCOPES
+    adapt_types: tuple | None = None  # explicit vessel types to adapt (overrides scope)
+    tissue_pressure_mmhg: float = 0.0  # extravascular pressure for the transmural pressure
+
+
+SCOPES = {
+    "capillaries": (VesselType.CAPILLARY,),
+    "microvessels": (VesselType.PRECAPILLARY_ARTERIOLE, VesselType.CAPILLARY, VesselType.VENULE,
+                     VesselType.ARTERIOLE, VesselType.UNCLASSIFIED),
+    "all": tuple(VesselType),
+}
 
 
 def _signals(graph, flow, pressure, d_um, length_um, prm: AdaptationParams):
@@ -126,7 +139,10 @@ def adapt_diameters(case: NetworkCase, params: AdaptationParams | None = None) -
     prm = params or AdaptationParams()
     g = case.graph
     d = g.diameter.copy()
-    adapting = ~np.isin(g.vessel_type, [int(t) for t in prm.fixed_types])
+    if prm.adapt_types is None and prm.scope not in SCOPES:
+        raise ValueError(f"scope must be one of {sorted(SCOPES)}")
+    types = prm.adapt_types if prm.adapt_types is not None else SCOPES[prm.scope]
+    adapting = np.isin(g.vessel_type, [int(t) for t in types])
     length_um = np.maximum(g.length / UM, 1e-3)
     a0, a1, a2, a3 = prm.pressure_shear
     history = []
@@ -136,7 +152,7 @@ def adapt_diameters(case: NetworkCase, params: AdaptationParams | None = None) -
         sol = solve_flow(gg, case.pressure_bc, inlet_hematocrit=case.inlet_hematocrit,
                          viscosity="pries_invitro", phase_separation="none")
         tau = 32 * sol.viscosity * PLASMA_VISCOSITY * np.abs(sol.flow) / (np.pi * d ** 3) / DYN_PER_CM2
-        p_mmhg = 0.5 * (sol.pressure[g.edges[:, 0]] + sol.pressure[g.edges[:, 1]]) / MMHG
+        p_mmhg = 0.5 * (sol.pressure[g.edges[:, 0]] + sol.pressure[g.edges[:, 1]]) / MMHG - prm.tissue_pressure_mmhg
         tau_e = a0 + a1 / (1 + (np.maximum(p_mmhg, 0.0) / a2) ** a3)
         d_um = d / UM
         down, up_resp = _signals(gg, sol.flow, sol.pressure, d_um, length_um, prm)
