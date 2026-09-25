@@ -109,6 +109,46 @@ when citing. The owner may add papers not indexed in PubMed.
 The owner uploads the original code under `legacy/` (one subfolder per topic,
 e.g. `legacy/biochemical`, `legacy/flow`, `legacy/fmri`), without lab data.
 
+## Design principles (owner, 2026-09)
+
+**Modular systems, zoom in and out.** Each physiological system (vessel
+network, blood flow, oxygen, endothelial signalling, mural cells, neurons,
+the imaging signal, …) is a module with defined inputs and outputs:
+boundary conditions, initial conditions and the states it exchanges with
+other systems. Everything is interconnected, but a study focuses on one
+system in detail while the others supply their conditions from a
+mesoscopic version. Improving or replacing one module must not break the
+others. Going in (e.g. single endothelial cells and gap-junction
+conduction) uses detailed models; going out uses averaged, statistical
+behaviour.
+
+**Detail only when needed.** Each system starts at the level of detail that
+is established and accepted. It goes deeper only when someone wants to
+reproduce a specific dataset or condition. The structure must allow that
+from the start, so growth never means going back and breaking things.
+
+**The mesoscopic model is learned from the detailed one.** The classical
+route (a detailed model too costly to use, then a hand-written simplified
+equation that cannot reproduce the detail) is not the goal. Instead:
+1. Detailed simulations are run over many inputs, boundary and initial
+   conditions, and every run is stored (inputs, conditions, outputs) in a
+   standard format, so each run is also training data.
+2. An AI surrogate (emulator) is trained on these runs. It returns the
+   system's outputs fast, without a fixed phenomenological equation, at a
+   chosen resolution (whole column, layer, depth bin).
+3. The surrogate and the detailed model share the same interface, so
+   either can stand in for a system.
+4. The surrogate reports its uncertainty and flags conditions outside its
+   training range; there the detailed model is used instead.
+5. Physical constraints (conservation of blood, red cells, oxygen) are
+   built in where possible.
+6. It is validated on held-out detailed runs and on real data, and
+   compared with the classical equation-based models as a baseline.
+7. It is retrained whenever the detailed model improves.
+
+Fast surrogates also make the inverse problem practical: parameter
+estimation with uncertainty needs many model runs.
+
 ## Order of work
 
 1. **Read the owner's papers** and summarise the framework, models and open
