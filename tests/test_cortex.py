@@ -187,3 +187,24 @@ def test_perfusion_with_invitro_viscosity_matches_measurements(column):
     inflow = sum(np.abs(sol.flow[(g.edges == n).any(axis=1)]).sum() for n in column.meta["sources"])
     perfusion = inflow * 6e7 / (g.meta["volume_mm3"] * 1e-3 * 1.05) * 100  # mL / 100 g / min
     assert 60 < perfusion < 150
+
+
+def test_structural_adaptation_evens_out_capillary_flow():
+    """Adaptation (Alberding & Secomb 2021) converges, keeps trunks fixed,
+    keeps capillaries near the measured 4 +/- 1 um and lowers the spread of
+    capillary speeds."""
+    kw = dict(size_x_um=300, size_y_um=300, depth_um=600, seed=4)
+    before = registry.create("network", "mouse_cortex_synthetic", **kw)
+    after = registry.create("network", "mouse_cortex_synthetic", structural_adaptation=True, **kw)
+    assert after.meta["adaptation"]["converged"]
+    trunks = np.isin(before.graph.vessel_type, [VesselType.PENETRATING_ARTERIOLE, VesselType.ASCENDING_VENULE])
+    np.testing.assert_allclose(after.graph.diameter[trunks], before.graph.diameter[trunks])
+    cap = before.graph.vessel_type == VesselType.CAPILLARY
+    assert 3.0 < after.graph.diameter[cap].mean() * 1e6 < 5.5
+
+    def speed_cv(case):
+        sol = solve_flow(case.graph, case.pressure_bc, viscosity="pries_invitro")
+        v = np.abs(sol.flow[cap]) / (np.pi * (case.graph.diameter[cap] / 2) ** 2)
+        return v.std() / v.mean()
+
+    assert speed_cv(after) < speed_cv(before)

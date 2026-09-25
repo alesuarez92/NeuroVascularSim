@@ -111,6 +111,18 @@ class MouseColumnParams:
     boundary: str = "penetrating_tops"
     hematocrit: float = 0.45  # assumption: systemic value, not from a cited paper
     seed: int = 0
+    # Optional structural adaptation of diameters (vascular/adaptation.py;
+    # Alberding & Secomb 2021). Off by default (owner's decision); the adapt_*
+    # values are those of AdaptationParams, where their sources are given.
+    structural_adaptation: bool = False
+    adapt_steps: int = 200
+    adapt_metabolic_signal: float = 0.1
+    adapt_k_m: float = 18.0
+    adapt_k_s: float = 1.8
+    adapt_tau_ref_dyn_cm2: float = 0.01
+    adapt_q_ref_nl_min: float = 0.1
+    adapt_conduction_length_um: float = 17300.0
+    adapt_min_diameter_um: float = 2.5
 
 
 def layer_of_depth(depth_um: np.ndarray) -> np.ndarray:
@@ -381,6 +393,13 @@ def build_mouse_column(p: MouseColumnParams) -> NetworkCase:
         if abs(achieved / target - 1) < 0.03:
             break
         foam_density *= target / achieved
+    if p.structural_adaptation:
+        from .adaptation import AdaptationParams, adapt_diameters
+
+        case, _ = adapt_diameters(case, AdaptationParams(
+            steps=p.adapt_steps, metabolic_signal=p.adapt_metabolic_signal, k_m=p.adapt_k_m, k_s=p.adapt_k_s,
+            tau_ref_dyn_cm2=p.adapt_tau_ref_dyn_cm2, q_ref_nl_min=p.adapt_q_ref_nl_min,
+            conduction_length_um=p.adapt_conduction_length_um, min_diameter_um=p.adapt_min_diameter_um))
     return case
 
 
@@ -591,6 +610,10 @@ _DEFAULTS = asdict(MouseColumnParams())
         "arteriolar_offshoot_generations", "venular_offshoot_generations",
         "capillary_length_density", "capillary_diameter_mean_um", "capillary_diameter_sd_um", "tortuosity",
         "l4_density_boost", "p_in_mmhg", "p_out_mmhg", "hematocrit",
+        "trunk_terminal_diameter_um", "connector_diameter_um", "pa_min_depth_fraction",
+        "capillary_min_distance_fraction", "capillary_edge_noise",
+        "structural_adaptation", "adapt_steps", "adapt_metabolic_signal", "adapt_k_m", "adapt_k_s",
+        "adapt_tau_ref_dyn_cm2", "adapt_q_ref_nl_min", "adapt_conduction_length_um", "adapt_min_diameter_um",
     )},
     choices={"boundary": ["penetrating_tops", "pial_tree"], "capillary_bed": ["nearest_neighbour", "foam"]},
 )
