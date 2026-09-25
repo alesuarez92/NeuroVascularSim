@@ -31,7 +31,7 @@ beyond the original:
 
 | Decision | Choice | Why |
 |---|---|---|
-| Engine language | **Python** (numpy, scipy) | Sparse solvers and graph tooling. Free CI. Runs where the code is developed. GPU later (JAX or numba) for Monte Carlo MR. MATLAB is not available in the development container. |
+| Engine language | **Python** (numpy, scipy) | Sparse solvers and graph tooling. Runs where the code is developed. GPU later (JAX or numba) for Monte Carlo MR. MATLAB is not available in the development container. |
 | Interface | **Web app**: FastAPI back end, React/TypeScript front end, 3D with vtk.js or three.js | Runs locally or on a lab server or GPU cluster. Multi-user, shareable, no install for collaborators. |
 | First species | **Mouse** | Reconstructed vascular graphs (Blinder, Kleinfeld, Schmid, Kirst), laminar cell densities (Keller/Erö), and the owner's optogenetic and LDF data. Human comes second, through synthetic networks. |
 | Units inside the engine | **SI** (m, s, Pa, m³/s, Pa·s) | One convention. Helpers convert from µm, mmHg and nL/min at the edges. |
@@ -132,7 +132,8 @@ web/                React front end (after the service)
   2021a network (≈10% CBF for 30% dilation, and stealing driven by
   phase separation).
 - **Synthetic ground truth** for any analysis method.
-- CI runs `pytest` on every push.
+- `pytest` runs locally before every push. CI waits for the owner's approval
+  (private-repository Actions budget; see CLAUDE.md).
 
 ## Build order
 

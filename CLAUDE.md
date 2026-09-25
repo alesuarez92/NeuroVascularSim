@@ -32,7 +32,7 @@ Before any meaningful work, announce one of:
 ## Build and test
 
 - Python engine in `src/neurovascularsim/` (SI units inside; see `docs/architecture.md`).
-- `pip install -e ".[dev]"` then `pytest`. CI runs the same on every push.
+- `pip install -e ".[dev]"` then `pytest`. No CI yet (see CI budget below); run the tests locally before every push.
 
 ## After every checkpoint
 
