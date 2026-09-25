@@ -144,14 +144,19 @@ web/                React front end (after the service)
    large 3D networks)**
 4. Web front end (`web/`): 3D network viewer (instanced vessels, hover
    details), experiment editor (form + full JSON spec), colour by vessel
-   type, flow change, flow or hematocrit, per-edge table, run history.
-   Served by `nvs serve` once built. **(done; light theme only until a
-   dark palette is validated)**
+   type, vessel segment, diameter, layer, depth, flow change, flow or
+   hematocrit, per-edge table, run history. Served by `nvs serve` once
+   built. **(done; light theme only until a dark palette is validated)**
+   Interactive controls: every plugin parameter editable (numbers, choices,
+   switches, data files with upload), vessel width magnification,
+   show/hide vessel classes, a depth slab, click a vessel for its details
+   and add it to a condition, network statistics against measurements.
 5. Realistic networks: synthetic mouse cortical columns validated against
    published statistics, a loader for reconstructed graphs (the Kleinfeld
    graphs via VesselGraph), depth and layer on every node, layer-selective
    perturbations, network statistics. **(done; see [networks.md](networks.md)
    for validation and known gaps)**
-6. Then widen the science: boundary conditions and vessel labelling for
-   reconstructed graphs, a background job queue, pathways (astrocyte, EC
+6. Boundary conditions and vessel labelling for reconstructed graphs
+   (`labeling.py`). **(done)**
+7. Then widen the science: a background job queue, pathways (astrocyte, EC
    conduction, pericytes), oxygen, BOLD, the 2D column.

@@ -50,7 +50,7 @@ describe("computeView", () => {
     const labels = colorByOptions(run).map((o) => o.label);
     expect(labels).toContain("Flow change: dilated");
     expect(labels).toContain("Hematocrit: baseline");
-    expect(colorByOptions(null)).toHaveLength(1);
+    expect(colorByOptions(null)).toHaveLength(3); // type, segment, diameter
   });
 });
 
@@ -63,8 +63,14 @@ describe("cortical networks", () => {
   };
 
   it("offers layer and depth colouring only when the graph has them", () => {
-    expect(colorByOptions(null, cortical).map((o) => o.label)).toEqual(["Vessel type", "Cortical layer", "Cortical depth"]);
-    expect(colorByOptions(null, graph)).toHaveLength(1);
+    expect(colorByOptions(null, cortical).map((o) => o.label)).toEqual([
+      "Vessel type",
+      "Vessel segment",
+      "Diameter",
+      "Cortical layer",
+      "Cortical depth",
+    ]);
+    expect(colorByOptions(null, graph)).toHaveLength(3);
   });
 
   it("colours layers in order with one legend entry per layer", () => {

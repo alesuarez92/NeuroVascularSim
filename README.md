@@ -65,8 +65,12 @@ nvs run examples/suarez2021a_stealing.json   # run a spec, save it under runs/
 nvs serve                                    # web app + API on http://127.0.0.1:8000 (API docs at /docs)
 ```
 
-The web app (React + three.js) lives in `web/`. Build it once and `nvs serve`
-serves it:
+The web app (React + three.js) lives in `web/`. In it you can edit every
+model parameter, upload graph files, and colour vessels by type, segment,
+diameter, layer, depth, flow or hematocrit. You can also magnify vessel
+widths, hide vessel classes, cut a depth slab, click a vessel to inspect it
+or add it to an experiment condition, and compare a network's statistics
+with published measurements. Build it once and `nvs serve` serves it:
 
 ```bash
 cd web && npm install && npm run build   # then: nvs serve

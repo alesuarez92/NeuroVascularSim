@@ -5,6 +5,7 @@ export type PluginInfo = {
   description: string;
   reference: string;
   parameters: Record<string, unknown>;
+  choices: Record<string, unknown[]>;
 };
 
 export type Plugins = Record<string, { contract: string; plugins: PluginInfo[] }>;
@@ -60,6 +61,35 @@ export type RunRecord = {
   summary: Record<string, { relative_flow: (number | null)[]; hematocrit_change: number[] }>;
 };
 
+export type ClassStats = {
+  length_um: { n: number; median: number; mean: number; p10: number; p90: number };
+  diameter_um: { n: number; median: number; mean: number; p10: number; p90: number };
+  length_density_m_per_mm3: number | null;
+  volume_fraction: number | null;
+};
+
+export type NetworkStats = {
+  statistics: {
+    volume_mm3: number;
+    n_nodes: number;
+    n_edges: number;
+    arterial?: ClassStats;
+    capillary?: ClassStats;
+    venous?: ClassStats;
+    vascular_volume_fraction?: number | null;
+    degree_fractions: Record<string, number>;
+    [key: string]: unknown;
+  };
+  branch_order: {
+    mean_order_from_arterial: number | null;
+    mean_order_from_venous: number | null;
+    mean_order_nearest: number | null;
+    median_arterial_to_venous_path: number | null;
+  };
+};
+
+export type DataFile = { name: string; size: number };
+
 export type RunEntry = { id: string; name: string; created: string };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -83,6 +113,15 @@ export const api = {
   plugins: () => request<Plugins>("/api/plugins"),
   network: (name: string, params: Record<string, unknown>) =>
     post<NetworkResponse>("/api/networks", { name, params }),
+  networkStats: (name: string, params: Record<string, unknown>) =>
+    post<NetworkStats>("/api/networks/stats", { name, params }),
+  dataFiles: () => request<DataFile[]>("/api/data-files"),
+  uploadDataFile: (file: File) =>
+    request<DataFile>(`/api/data-files/${encodeURIComponent(file.name)}`, {
+      method: "PUT",
+      body: file,
+      headers: { "content-type": "text/csv" },
+    }),
   validate: (spec: ExperimentSpec) =>
     post<{ valid: boolean; error?: string }>("/api/experiments/validate", spec),
   run: (spec: ExperimentSpec) => post<RunRecord>("/api/runs", spec),

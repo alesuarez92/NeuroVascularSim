@@ -21,8 +21,15 @@ Built by `neurovascularsim/vascular/cortex.py`. The components:
   degree 3 by removing a near-perfect matching, and the cell size is
   calibrated to the target capillary length density.
 - **Penetrating arterioles and ascending venules:** vertical trunks that
-  taper with depth. They branch into the bed every 25 µm through
-  precapillary arterioles and postcapillary venules.
+  taper with depth, 24 per mm² at a 1 : 3 ratio. They join the bed every
+  40 µm of depth. Each join grows an offshoot tree (one generation by
+  default): capillary edges next to the trunk are relabelled as
+  precapillary arterioles or postcapillary venules, and then the capillary
+  density is recalibrated.
+- **Calibration:** the defaults were fitted to the capillary topology of
+  Ji et al. 2021 (branch order and the arteriole-to-venule path) and not to
+  flow. The perfusion that results (below) is therefore a test of the model,
+  not a fit.
 - **Boundary conditions:** by default, pressures are fixed where arterioles
   (60 mmHg) and venules (10 mmHg) enter the cortex. This is the standard for
   cropped networks. The alternative `boundary: "pial_tree"` adds pial trees
@@ -44,37 +51,37 @@ Tsai et al. 2009
 
 | Quantity | Model | Measured | Source |
 |---|---|---|---|
-| Capillary length density | 0.88–0.90 m/mm³ | 0.88 ± 0.17 (vS1), 0.98 (somatosensory) | Ji 2021 |
+| Capillary length density | 0.88–0.95 m/mm³ | 0.88 ± 0.17 (vS1), 0.98 (somatosensory) | Ji 2021 |
 | Capillary diameter | median 4.0 µm | 4.0 ± 1.0 µm (network value) | Schmid 2017 |
-| Capillary segment length | median ~36 µm | median 46–50 µm | Blinder 2013, Ji 2021 |
-| Junction degree | 78% degree 3 | predominantly degree 3 | Blinder 2013 |
-| Capillaries, share of vascular volume | ~0.80 | 0.8 ± 0.2 | Ji 2021 |
-| Capillaries, share of vascular length | ~0.92 | 0.959 | Ji 2021 |
+| Capillary segment length | median 33–36 µm | median 46–50 µm | Blinder 2013, Ji 2021 |
+| Junction degree | ~87% degree 3 | predominantly degree 3 | Blinder 2013 |
+| Capillary branch order (mean) | 3.4–3.8 | 3.4 ± 0.2 | Ji 2021 |
+| Arteriole-to-venule path (median) | 5–7 branches | ~7 | Ji 2021 |
+| Capillaries, share of vascular volume | ~0.55 | 0.8 ± 0.2 | Ji 2021 |
+| Capillaries, share of vascular length | ~0.82 | 0.959 | Ji 2021 |
 | Venules : arterioles | 3 : 1 | 3.0 ± 0.1 | Blinder 2013 |
-| Laminar capillary density | flat within ~10% (L2/3–L6) | not tracking neuron density; shallow L4 peak | Tsai 2009, Blinder 2013 |
-| Capillary segment resistance | ~1.7 P·µm⁻³ | 1.6 P·µm⁻³ per edge | Blinder 2013 |
+| Laminar capillary density | rises gently with depth (< 30%) | not tracking neuron density; shallow L4 peak | Tsai 2009, Blinder 2013 |
+| Perfusion | 66–69 mL/100 g/min | roughly 100 | see Schmid 2017 |
+
+The app's **Network statistics** panel computes these quantities for any
+network, including reconstructed ones, and marks each against its measured
+range.
 
 ### Known gaps (open work, not hidden)
 
-- **Segment length:** about 25% shorter than measured at the correct length
+- **Segment length:** about 30% shorter than measured at the correct length
   density. Matching both would need tortuosity near 1.4, against the ~1.2
   measured, so the capillary topology itself needs more work.
-- **Perfusion is too low:** about 10–35 mL/100 g/min, against roughly
-  100 measured. Median capillary velocities are 0.02–0.03 mm/s, against
-  0.4–2 mm/s measured (Schmid 2017; Blinder 2013).
-  - The segment resistance matches Blinder's value, so the likely causes lie
-    elsewhere: the density and branching of penetrating vessels (from
-    figures and tables that are only partly legible here), capillary
-    hematocrit, and the closed lateral faces of the column.
-- **Capillary hematocrit:** a few capillaries reach 0.7 or more, or near
-  zero. This comes from phase separation at very low flows.
-- **Convergence:** the red-cell partitioning iteration ends in a small limit
-  cycle. A few low-flow capillaries keep switching direction, so the solver
-  stops at a 0.1% flow change and reports the iteration count. Solves with
-  phase separation take ~35 s for a 600 × 600 × 1200 µm column.
-- **Penetrating vessel density:** 9 arterioles per mm² by default, read from
-  Schmid 2017 Table 2. The reading is ambiguous (range ≈ 7–18 per mm²) and
-  should be checked against data.
+- **Offshoots take capillary share:** relabelling capillary edges as
+  offshoot trees lowers the capillary share of vascular volume (~0.55
+  against 0.8) and of length (~0.82 against 0.96). Offshoot vessels are
+  probably too wide or too many.
+- **Perfusion** is about two thirds of the measured value. Rheology was not
+  tuned to close the gap, and neither were the pressures.
+- **Capillary hematocrit:** a few low-flow capillaries reach extreme values
+  (near 0 or above 0.7), from phase separation at very low flows.
+- **Solve time:** with phase separation, a 600 × 600 × 1200 µm column takes
+  ~25–35 s. The adaptive under-relaxation converges to a 0.1% flow change.
 - **Layer boundaries** are approximate for mouse S1.
 
 ## Reconstructed networks (the Kleinfeld graphs)
@@ -99,7 +106,31 @@ The loader reads the VesselGraph/Voreen columns (`pos_x/y/z`,
 the latter, see `save_graph_csv`, which is also how you can export graphs
 from your own code without sharing that code.
 
-Reconstructed graphs usually lack arterial and venous labels. Vessels wider
-than 8 µm are marked `UNCLASSIFIED` until labelled, and boundary conditions
-must be supplied before flow can be solved. Labelling and boundary
-conditions for real graphs are the next step on this side.
+### From a reconstructed graph to a solvable network
+
+`graph_files` runs `labeling.prepare_network` on every loaded graph (turn
+it off with `prepare: false`):
+
+1. **Depth** below the pia along `depth_axis`, with the surface at the
+   `min` or `max` coordinate.
+2. **Penetrating trees:** the connected components of vessels wider than
+   6.5 µm that start within 30 µm of the surface and reach at least 100 µm
+   deep. Their surface ends are where blood enters or leaves.
+3. **Arterial or venous**, set by `labels`:
+   - `types` uses the vessel types in the file.
+   - `diameter` is a heuristic: the widest quarter of trees at entry are
+     called arterial.
+   - `auto` (the default) uses types when every tree has them, otherwise the
+     heuristic. The method used is recorded in the network metadata.
+4. **Boundary conditions:** arterial entries are held at `p_arterial_mmhg`
+   (default 60) and venous exits at `p_venous_mmhg` (default 10). Capillary
+   dead ends at the crop faces are pruned, so no flow crosses the faces.
+
+On synthetic columns with their labels stripped, the tree detection finds
+86–92% of the true entry points, with no spurious ones and no mixed trees.
+The diameter heuristic is weak: it identifies only about a third to half of
+the arterial trees. Use labelled data whenever possible.
+
+In the app, CSV files can be uploaded from the network form (the
+**Upload CSV** button next to `nodes_file` and `edges_file`). Uploads are
+stored in the data directory, which is never committed.

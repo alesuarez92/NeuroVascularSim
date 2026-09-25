@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import type { Condition, ExperimentSpec, Plugins } from "./api";
+import type { Condition, DataFile, ExperimentSpec, Plugins } from "./api";
+import { ParamField } from "./ParamField";
+import { parseList } from "./params";
 
 type Props = {
   plugins: Plugins;
@@ -7,6 +9,8 @@ type Props = {
   onChange: (spec: ExperimentSpec) => void;
   onRun: () => void;
   running: boolean;
+  dataFiles: DataFile[];
+  onDataFilesChanged: () => void;
 };
 
 const VESSEL_TYPES = [
@@ -40,7 +44,7 @@ function parseTargets(text: string): (string | number)[] {
     .map((s) => (/^\d+$/.test(s) ? Number(s) : s));
 }
 
-export function ExperimentEditor({ plugins, spec, onChange, onRun, running }: Props) {
+export function ExperimentEditor({ plugins, spec, onChange, onRun, running, dataFiles, onDataFilesChanged }: Props) {
   const networks = plugins.network?.plugins ?? [];
   const net = networks.find((p) => p.name === spec.network.name);
   const set = (patch: Partial<ExperimentSpec>) => onChange({ ...spec, ...patch });
@@ -81,21 +85,24 @@ export function ExperimentEditor({ plugins, spec, onChange, onRun, running }: Pr
           ))}
         </select>
         {net?.description && <p className="hint">{net.description}</p>}
-        {Object.entries(net?.parameters ?? {}).map(([key, def]) =>
-          typeof def === "number" ? (
-            <label key={key} className="inline">
-              {key}
-              <input
-                type="number"
-                step="any"
-                value={String(spec.network.params[key] ?? def)}
-                onChange={(e) =>
-                  set({ network: { ...spec.network, params: { ...spec.network.params, [key]: Number(e.target.value) } } })
-                }
-              />
-            </label>
-          ) : null,
-        )}
+        {Object.entries(net?.parameters ?? {}).map(([key, def]) => (
+          <ParamField
+            key={`${spec.network.name}:${key}`}
+            name={key}
+            def={def}
+            value={spec.network.params[key]}
+            choices={net?.choices?.[key]}
+            dataFiles={dataFiles}
+            onUploaded={onDataFilesChanged}
+            onChange={(v) => set({ network: { ...spec.network, params: { ...spec.network.params, [key]: v } } })}
+          />
+        ))}
+        <button
+          className="ghost"
+          onClick={() => set({ network: { ...spec.network, params: { ...(net?.parameters ?? {}) } } })}
+        >
+          Reset to defaults
+        </button>
       </fieldset>
 
       <fieldset>
@@ -123,6 +130,7 @@ export function ExperimentEditor({ plugins, spec, onChange, onRun, running }: Pr
             edges?: (string | number)[];
             vessel_types?: string[];
             layers?: number[];
+            depth_range_um?: number[] | null;
             factor?: number;
           };
           const update = (patch: Record<string, unknown>) =>
@@ -175,6 +183,18 @@ export function ExperimentEditor({ plugins, spec, onChange, onRun, running }: Pr
                         .filter((x) => Number.isInteger(x) && x > 0),
                     })
                   }
+                />
+              </label>
+              <label className="inline">
+                Depth (µm)
+                <input
+                  placeholder="from, to (e.g. 400, 550)"
+                  defaultValue={(params.depth_range_um ?? []).join(", ")}
+                  key={`depth:${i}:${(params.depth_range_um ?? []).join(",")}`}
+                  onBlur={(e) => {
+                    const r = (parseList(e.target.value) ?? []).map(Number).filter(Number.isFinite);
+                    update({ depth_range_um: r.length === 2 ? r : null });
+                  }}
                 />
               </label>
               <label className="inline">

@@ -88,3 +88,34 @@ export function symmetricLimit(values: number[]): number {
   const nice = [2, 5, 10, 15, 20, 25, 50, 100, 200, 500];
   return nice.find((n) => n >= m) ?? m;
 }
+
+// Vessel segments: the class keeps its hue and the segment level sets the
+// lightness (pial darkest, offshoots lightest), so the three-hue identity
+// above still reads first. Offshoot steps are ~2.9:1 on the surface: legible
+// for filled tubes, and the legend and tooltip name every segment.
+export const SEGMENT_COLORS: Record<string, string> = {
+  PIAL_ARTERY: "#b8322f",
+  PENETRATING_ARTERIOLE: "#e34948",
+  ARTERIOLE: "#e34948",
+  PRECAPILLARY_ARTERIOLE: "#ec6f6d",
+  CAPILLARY: CLASS_COLORS.capillary,
+  VENULE: "#5598e7",
+  ASCENDING_VENULE: "#2a78d6",
+  PIAL_VEIN: "#1c5cab",
+  UNCLASSIFIED: CLASS_COLORS.unclassified,
+};
+
+export const SEGMENT_LABELS: Record<string, string> = {
+  PIAL_ARTERY: "Pial artery",
+  PENETRATING_ARTERIOLE: "Penetrating arteriole",
+  ARTERIOLE: "Arteriole",
+  PRECAPILLARY_ARTERIOLE: "Precapillary arteriole",
+  CAPILLARY: "Capillary",
+  VENULE: "Postcapillary venule",
+  ASCENDING_VENULE: "Ascending venule",
+  PIAL_VEIN: "Pial vein",
+  UNCLASSIFIED: "Unclassified",
+};
+
+/** Upstream to downstream, for legends. */
+export const SEGMENT_ORDER = Object.keys(SEGMENT_LABELS);

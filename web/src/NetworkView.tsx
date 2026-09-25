@@ -8,8 +8,14 @@ type Props = {
   graph: Graph;
   colors: string[]; // one per edge
   highlight: number | null;
+  fade?: number; // how far other vessels fade toward the background while one is highlighted
+  visible: boolean[]; // one per edge
+  widthScale: number; // drawn radius = true radius x widthScale
   onHover: (edge: number | null, x: number, y: number) => void;
+  onPick: (edge: number | null) => void; // click (not drag) on a vessel, or on empty space
 };
+
+type Segment = { mid: THREE.Vector3; rot: THREE.Quaternion; len: number; r: number };
 
 /**
  * 3D view of a vascular graph. Every edge is one instance of a unit cylinder,
@@ -17,7 +23,7 @@ type Props = {
  * micrometres at true scale. Parallel edges between the same two nodes are
  * offset sideways so each stays visible.
  */
-export function NetworkView({ graph, colors, highlight, onHover }: Props) {
+export function NetworkView({ graph, colors, highlight, fade = 0.55, visible, widthScale, onHover, onPick }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const state = useRef<{
     renderer: THREE.WebGLRenderer;
@@ -25,10 +31,13 @@ export function NetworkView({ graph, colors, highlight, onHover }: Props) {
     camera: THREE.PerspectiveCamera;
     controls: OrbitControls;
     mesh: THREE.InstancedMesh | null;
+    segments: Segment[];
     render: () => void;
   } | null>(null);
   const hoverRef = useRef(onHover);
   hoverRef.current = onHover;
+  const pickRef = useRef(onPick);
+  pickRef.current = onPick;
 
   // Scene, camera, renderer: created once.
   useEffect(() => {
@@ -61,25 +70,40 @@ export function NetworkView({ graph, colors, highlight, onHover }: Props) {
 
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
-    const onMove = (ev: PointerEvent) => {
+    const pick = (ev: PointerEvent): number | null => {
       const s = state.current;
-      if (!s?.mesh) return;
+      if (!s?.mesh) return null;
       const rect = renderer.domElement.getBoundingClientRect();
       pointer.set(((ev.clientX - rect.left) / rect.width) * 2 - 1, -((ev.clientY - rect.top) / rect.height) * 2 + 1);
       raycaster.setFromCamera(pointer, camera);
-      const hit = raycaster.intersectObject(s.mesh)[0];
-      hoverRef.current(hit?.instanceId ?? null, ev.clientX - rect.left, ev.clientY - rect.top);
+      return raycaster.intersectObject(s.mesh)[0]?.instanceId ?? null;
+    };
+    const onMove = (ev: PointerEvent) => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      hoverRef.current(pick(ev), ev.clientX - rect.left, ev.clientY - rect.top);
     };
     const onLeave = () => hoverRef.current(null, 0, 0);
-    renderer.domElement.addEventListener("pointermove", onMove);
-    renderer.domElement.addEventListener("pointerleave", onLeave);
+    // A click selects; a drag (orbit, pan) does not.
+    let down: { x: number; y: number } | null = null;
+    const onDown = (ev: PointerEvent) => (down = { x: ev.clientX, y: ev.clientY });
+    const onUp = (ev: PointerEvent) => {
+      if (down && Math.hypot(ev.clientX - down.x, ev.clientY - down.y) < 4) pickRef.current(pick(ev));
+      down = null;
+    };
+    const el2 = renderer.domElement;
+    el2.addEventListener("pointermove", onMove);
+    el2.addEventListener("pointerleave", onLeave);
+    el2.addEventListener("pointerdown", onDown);
+    el2.addEventListener("pointerup", onUp);
 
-    state.current = { renderer, scene, camera, controls, mesh: null, render };
+    state.current = { renderer, scene, camera, controls, mesh: null, segments: [], render };
     resize();
     return () => {
       observer.disconnect();
-      renderer.domElement.removeEventListener("pointermove", onMove);
-      renderer.domElement.removeEventListener("pointerleave", onLeave);
+      el2.removeEventListener("pointermove", onMove);
+      el2.removeEventListener("pointerleave", onLeave);
+      el2.removeEventListener("pointerdown", onDown);
+      el2.removeEventListener("pointerup", onUp);
       controls.dispose();
       renderer.dispose();
       el.removeChild(renderer.domElement);
@@ -118,9 +142,7 @@ export function NetworkView({ graph, colors, highlight, onHover }: Props) {
     const mat = new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0.0 });
     const mesh = new THREE.InstancedMesh(geom, mat, graph.n_edges);
     const up = new THREE.Vector3(0, 1, 0);
-    const m = new THREE.Matrix4();
-    const q = new THREE.Quaternion();
-    graph.edges.forEach(([a, b], k) => {
+    const segments: Segment[] = graph.edges.map(([a, b], k) => {
       const pa = pos[a].clone().sub(center);
       const pb = pos[b].clone().sub(center);
       const dir = pb.clone().sub(pa);
@@ -136,15 +158,17 @@ export function NetworkView({ graph, colors, highlight, onHover }: Props) {
         pa.add(side);
         pb.add(side);
       }
-      const r = toUm(graph.diameter[k]) / 2;
-      q.setFromUnitVectors(up, dir);
-      m.compose(pa.clone().add(pb).multiplyScalar(0.5), q, new THREE.Vector3(r, len, r));
-      mesh.setMatrixAt(k, m);
       mesh.setColorAt(k, new THREE.Color("#a8a7a1"));
+      return {
+        mid: pa.clone().add(pb).multiplyScalar(0.5),
+        rot: new THREE.Quaternion().setFromUnitVectors(up, dir),
+        len,
+        r: toUm(graph.diameter[k]) / 2,
+      };
     });
-    mesh.instanceMatrix.needsUpdate = true;
     s.scene.add(mesh);
     s.mesh = mesh;
+    s.segments = segments;
 
     // Fit the whole box in view, whatever its aspect ratio.
     const size = box.getSize(new THREE.Vector3());
@@ -161,6 +185,23 @@ export function NetworkView({ graph, colors, highlight, onHover }: Props) {
     s.render();
   }, [graph]);
 
+  // Width and visibility: instance matrices rewritten in place (hidden = zero scale).
+  useEffect(() => {
+    const s = state.current;
+    if (!s?.mesh) return;
+    const m = new THREE.Matrix4();
+    const scale = new THREE.Vector3();
+    s.segments.forEach((seg, k) => {
+      const r = visible[k] === false ? 0 : seg.r * widthScale;
+      m.compose(seg.mid, seg.rot, scale.set(r, visible[k] === false ? 0 : seg.len, r));
+      s.mesh!.setMatrixAt(k, m);
+    });
+    s.mesh.instanceMatrix.needsUpdate = true;
+    s.mesh.boundingSphere = null; // recomputed for picking
+    s.mesh.boundingBox = null;
+    s.render();
+  }, [graph, visible, widthScale]);
+
   // Colours: updated in place.
   useEffect(() => {
     const s = state.current;
@@ -168,12 +209,12 @@ export function NetworkView({ graph, colors, highlight, onHover }: Props) {
     const c = new THREE.Color();
     colors.forEach((hex, k) => {
       c.set(hex);
-      if (highlight !== null && k !== highlight) c.lerp(new THREE.Color(0xfcfcfb), 0.55);
+      if (highlight !== null && k !== highlight) c.lerp(new THREE.Color(0xfcfcfb), fade);
       s.mesh!.setColorAt(k, c);
     });
     if (s.mesh.instanceColor) s.mesh.instanceColor.needsUpdate = true;
     s.render();
-  }, [colors, highlight, graph]);
+  }, [colors, highlight, fade, graph]);
 
   return <div className="viewer" ref={host} />;
 }

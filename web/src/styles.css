@@ -101,7 +101,7 @@ button.ghost:hover { background: var(--plane); }
   border-bottom: 1px solid var(--border);
   background: var(--surface);
 }
-.toolbar label { margin: 0; min-width: 320px; }
+.toolbar > label { margin: 0; min-width: 320px; }
 
 .stage { position: relative; min-height: 0; background: var(--surface); }
 .viewer { position: absolute; inset: 0; }
@@ -150,3 +150,49 @@ tr.selected td { background: #eef4fc; }
   aside { border-right: 0; border-bottom: 1px solid var(--border); }
   .toolbar label { min-width: 0; }
 }
+
+/* Controls added for interactive exploration. */
+label.check { display: flex; align-items: center; gap: 6px; grid-template-columns: none; }
+label.check input { margin: 0; }
+label.compact { grid-template-columns: auto 110px; min-width: 0 !important; }
+button.small { padding: 2px 8px; font-size: 12px; }
+button:disabled { opacity: 0.55; cursor: default; }
+.row.between { justify-content: space-between; align-items: center; }
+.file-field { margin: 6px 0; }
+.file-field .row { align-items: center; }
+
+.toolbar { flex-wrap: wrap; row-gap: 6px; }
+.view-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; font-size: 12px; color: var(--ink-2); }
+.class-toggles { display: flex; gap: 10px; }
+.class-toggles label { margin: 0; }
+.slab { display: flex; align-items: center; gap: 6px; }
+.slab span { min-width: 120px; font-variant-numeric: tabular-nums; }
+.slab input { width: 90px; }
+
+.legend-items { flex-wrap: wrap; max-width: 520px; row-gap: 4px; }
+
+.selection {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  width: 260px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  padding: 10px 12px;
+  font-size: 12px;
+}
+.selection dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 8px 0; }
+.selection dt { color: var(--ink-2); }
+.selection dd { margin: 0; font-variant-numeric: tabular-nums; }
+.selection .actions { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.stats-table { margin-top: 8px; font-size: 11px; }
+.stats-table th, .stats-table td { padding: 3px 4px; white-space: normal; }
+.verdict { white-space: nowrap; }
+.verdict.in { color: #1f7a3a; }
+.verdict.near { color: #8a6d00; }
+.verdict.out { color: var(--critical); }
+.table-note { padding: 4px 10px; margin: 0; }
+tbody tr { cursor: pointer; }

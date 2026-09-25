@@ -1,12 +1,25 @@
 // What the viewer shows: colours per edge plus the matching legend, for a
 // chosen field. Pure functions, so they are tested without a browser.
 
-import type { Graph, RunRecord } from "./api";
-import { CLASS_COLORS, CLASS_LABELS, type VesselClass, diverging, sequential, symmetricLimit, vesselClass } from "./colors";
+import type { Condition, Graph, RunRecord } from "./api";
+import {
+  CLASS_COLORS,
+  CLASS_LABELS,
+  SEGMENT_COLORS,
+  SEGMENT_LABELS,
+  SEGMENT_ORDER,
+  type VesselClass,
+  diverging,
+  sequential,
+  symmetricLimit,
+  vesselClass,
+} from "./colors";
 import { toNlPerMin } from "./units";
 
 export type ColorBy =
   | { kind: "type" }
+  | { kind: "segment" }
+  | { kind: "diameter" }
   | { kind: "layer" }
   | { kind: "depth" }
   | { kind: "relflow"; label: string }
@@ -19,7 +32,11 @@ export type Legend =
   | { kind: "sequential"; title: string; min: number; max: number; unit: string };
 
 export function colorByOptions(run: RunRecord | null, graph?: Graph): { value: ColorBy; label: string }[] {
-  const opts: { value: ColorBy; label: string }[] = [{ value: { kind: "type" }, label: "Vessel type" }];
+  const opts: { value: ColorBy; label: string }[] = [
+    { value: { kind: "type" }, label: "Vessel type" },
+    { value: { kind: "segment" }, label: "Vessel segment" },
+    { value: { kind: "diameter" }, label: "Diameter" },
+  ];
   if (graph?.layer) opts.push({ value: { kind: "layer" }, label: "Cortical layer" });
   if (graph?.depth) opts.push({ value: { kind: "depth" }, label: "Cortical depth" });
   if (!run) return opts;
@@ -39,6 +56,28 @@ export const colorByKey = (c: ColorBy) => ("label" in c ? `${c.kind}:${c.label}`
 const edgeMean = (graph: Graph, perNode: number[]) => graph.edges.map(([a, b]) => 0.5 * (perNode[a] + perNode[b]));
 
 export function computeView(graph: Graph, run: RunRecord | null, by: ColorBy): { colors: string[]; legend: Legend } {
+  if (by.kind === "segment") {
+    const present = new Set(graph.vessel_type);
+    return {
+      colors: graph.vessel_type.map((t) => SEGMENT_COLORS[t] ?? CLASS_COLORS.unclassified),
+      legend: {
+        kind: "categorical",
+        title: "Vessel segment",
+        items: SEGMENT_ORDER.filter((t) => present.has(t)).map((t) => ({ color: SEGMENT_COLORS[t], label: SEGMENT_LABELS[t] })),
+      },
+    };
+  }
+  if (by.kind === "diameter") {
+    // Diameters span an order of magnitude (capillaries to pial vessels): a log scale.
+    const d = graph.diameter.map((x) => x * 1e6);
+    const lo = Math.min(...d);
+    const hi = Math.max(...d);
+    const span = Math.log(hi / lo);
+    return {
+      colors: d.map((x) => sequential(span > 1e-12 ? Math.log(x / lo) / span : 0.5)),
+      legend: { kind: "sequential", title: "Diameter (log scale)", min: lo, max: hi, unit: "µm" },
+    };
+  }
   if (by.kind === "layer" && graph.layer) {
     // Layers are ordered, so they take evenly spaced steps of the sequential ramp.
     const names = (graph.meta.layer_names as string[] | undefined) ?? [];
@@ -106,4 +145,41 @@ export function computeView(graph: Graph, run: RunRecord | null, by: ColorBy): {
       unit: by.kind === "flow" ? "nL/min" : "",
     },
   };
+}
+
+export type ViewFilter = {
+  hidden: VesselClass[]; // vessel classes not drawn
+  depthUm?: [number, number]; // draw only edges whose mean depth is in this slab
+};
+
+/** Which edges to draw. */
+export function visibleEdges(graph: Graph, f: ViewFilter): boolean[] {
+  const hidden = new Set(f.hidden);
+  const depth = graph.depth && f.depthUm ? edgeMean(graph, graph.depth).map((d) => d * 1e6) : null;
+  return graph.vessel_type.map((t, k) => {
+    if (hidden.has(vesselClass(t))) return false;
+    if (depth && (depth[k] < f.depthUm![0] || depth[k] > f.depthUm![1])) return false;
+    return true;
+  });
+}
+
+/**
+ * Conditions with ``edge`` added to the edges dilated by condition ``index``
+ * (its first scale_diameter perturbation), or to a new condition dilating
+ * only that edge by 30%.
+ */
+export function addEdgeToCondition(conditions: Condition[], index: number | "new", edge: number): Condition[] {
+  if (index === "new") {
+    const taken = new Set(conditions.map((c) => c.label));
+    let label = `dilate_vessel_${edge}`;
+    for (let i = 2; taken.has(label); i++) label = `dilate_vessel_${edge}_${i}`;
+    return [...conditions, { label, perturbations: [{ name: "scale_diameter", params: { edges: [edge], factor: 1.3 } }] }];
+  }
+  return conditions.map((c, i) => {
+    if (i !== index) return c;
+    const [first, ...rest] = c.perturbations.length ? c.perturbations : [{ name: "scale_diameter", params: { factor: 1.3 } }];
+    const edges = (first.params.edges as (number | string)[] | undefined) ?? [];
+    if (edges.includes(edge)) return c;
+    return { ...c, perturbations: [{ ...first, params: { ...first.params, edges: [...edges, edge] } }, ...rest] };
+  });
 }

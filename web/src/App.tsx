@@ -1,11 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, type ExperimentSpec, type NetworkResponse, type Plugins, type RunEntry, type RunRecord } from "./api";
+import {
+  api,
+  type DataFile,
+  type ExperimentSpec,
+  type NetworkResponse,
+  type Plugins,
+  type RunEntry,
+  type RunRecord,
+} from "./api";
+import { SEGMENT_LABELS } from "./colors";
 import { EdgeTable } from "./EdgeTable";
 import { ExperimentEditor } from "./ExperimentEditor";
 import { Legend } from "./Legend";
 import { NetworkView } from "./NetworkView";
+import { SelectionCard } from "./SelectionCard";
+import { StatsPanel } from "./StatsPanel";
 import { fmt, pct, toNlPerMin, toUm } from "./units";
-import { type ColorBy, colorByKey, colorByOptions, computeView } from "./viz";
+import { DEFAULT_VIEW, ViewControls, type ViewSettings } from "./ViewControls";
+import { type ColorBy, addEdgeToCondition, colorByKey, colorByOptions, computeView, visibleEdges } from "./viz";
 
 function defaultSpec(plugins: Plugins): ExperimentSpec {
   const nets = plugins.network?.plugins ?? [];
@@ -38,6 +50,9 @@ export default function App() {
   const [colorBy, setColorBy] = useState<ColorBy>({ kind: "type" });
   const [hover, setHover] = useState<{ edge: number; x: number; y: number } | null>(null);
   const [rowHover, setRowHover] = useState<number | null>(null);
+  const [selected, setSelected] = useState<number | null>(null);
+  const [viewSettings, setViewSettings] = useState<ViewSettings>(DEFAULT_VIEW);
+  const [dataFiles, setDataFiles] = useState<DataFile[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
 
@@ -50,7 +65,9 @@ export default function App() {
       setSpec(defaultSpec(p));
     }).catch(fail);
     api.runs().then(setRuns).catch(fail);
+    api.dataFiles().then(setDataFiles).catch(fail);
   }, []);
+  const refreshDataFiles = () => api.dataFiles().then(setDataFiles).catch(fail);
 
   // Describe the network whenever its name or parameters change.
   const networkKey = spec ? JSON.stringify(spec.network) : "";
@@ -60,6 +77,8 @@ export default function App() {
       api.network(spec.network.name, spec.network.params)
         .then((n) => {
           setNetwork(n);
+          setSelected(null);
+          setViewSettings((v) => ({ ...v, depthUm: null }));
           setError(null);
         })
         .catch(fail);
@@ -109,7 +128,16 @@ export default function App() {
     }
   }
 
-  const highlighted = hover?.edge ?? rowHover;
+  const highlighted = hover?.edge ?? rowHover ?? selected;
+  const visible = useMemo(
+    () => (network ? visibleEdges(network.graph, { hidden: viewSettings.hidden, depthUm: viewSettings.depthUm ?? undefined }) : []),
+    [network, viewSettings.hidden, viewSettings.depthUm],
+  );
+
+  function addSelectedTo(index: number | "new") {
+    if (!spec || selected === null) return;
+    setSpec({ ...spec, conditions: addEdgeToCondition(spec.conditions, index, selected) });
+  }
   // Draw vessels at the diameters of the condition being shown.
   const g = useMemo(() => {
     if (!network) return undefined;
@@ -129,11 +157,22 @@ export default function App() {
       <aside>
         <h2>Experiment</h2>
         {plugins && spec ? (
-          <ExperimentEditor plugins={plugins} spec={spec} onChange={setSpec} onRun={runExperiment} running={running} />
+          <ExperimentEditor
+            plugins={plugins}
+            spec={spec}
+            onChange={setSpec}
+            onRun={runExperiment}
+            running={running}
+            dataFiles={dataFiles}
+            onDataFilesChanged={refreshDataFiles}
+          />
         ) : (
           <p className="muted">Connecting to the engine…</p>
         )}
         {error && <p className="error" role="alert">{error}</p>}
+
+        <h2>Network statistics</h2>
+        {spec ? <StatsPanel network={spec.network} /> : null}
 
         <h2>Runs</h2>
         {runs.length === 0 ? (
@@ -165,6 +204,7 @@ export default function App() {
               ))}
             </select>
           </label>
+          {network && <ViewControls graph={network.graph} view={viewSettings} onChange={setViewSettings} />}
           {shownRun && (
             <span className="muted">
               run {shownRun.id} · {Object.values(shownRun.results).every((f) => f.converged) ? "converged" : "NOT converged"}
@@ -179,12 +219,26 @@ export default function App() {
                 graph={g}
                 colors={view.colors}
                 highlight={highlighted}
+                fade={hover || rowHover !== null ? 0.55 : 0.3}
+                visible={visible}
+                widthScale={viewSettings.widthScale}
                 onHover={(edge, x, y) => setHover(edge === null ? null : { edge, x, y })}
+                onPick={setSelected}
               />
               <Legend legend={view.legend} />
+              {selected !== null && selected < g.n_edges && spec && (
+                <SelectionCard
+                  edge={selected}
+                  graph={g}
+                  run={shownRun}
+                  conditions={spec.conditions}
+                  onAddToCondition={addSelectedTo}
+                  onClose={() => setSelected(null)}
+                />
+              )}
               {hover && (
                 <div className="tooltip" style={{ left: hover.x + 14, top: hover.y + 14 }} role="status">
-                  <strong>Edge {hover.edge}</strong> · {g.vessel_type[hover.edge].toLowerCase().replace(/_/g, " ")}
+                  <strong>Vessel {hover.edge}</strong> · {SEGMENT_LABELS[g.vessel_type[hover.edge]] ?? g.vessel_type[hover.edge]}
                   <div>D {fmt(toUm(g.diameter[hover.edge]))} µm · L {fmt(toUm(g.length[hover.edge]))} µm</div>
                   {shownRun && (
                     <>
@@ -202,7 +256,7 @@ export default function App() {
           )}
         </div>
 
-        {network && <EdgeTable graph={network.graph} run={shownRun} selected={highlighted} onSelect={setRowHover} />}
+        {network && <EdgeTable graph={network.graph} run={shownRun} selected={highlighted} onHover={setRowHover} onSelect={setSelected} />}
       </main>
     </div>
   );
