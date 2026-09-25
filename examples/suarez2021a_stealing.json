@@ -1,0 +1,11 @@
+{
+  "name": "Arterial blood stealing (Suarez et al. 2021a)",
+  "description": "Dilate one daughter arteriole by 30%. Set phase_separation to none to see the stealing disappear.",
+  "network": {"name": "suarez2021a", "params": {"hematocrit": 0.45}},
+  "solver": {"viscosity": "pries_invivo", "phase_separation": "pries"},
+  "conditions": [
+    {"label": "dilate_active_30pct",
+     "perturbations": [{"name": "scale_diameter", "params": {"edges": ["active_edge"], "factor": 1.3}}]}
+  ],
+  "spec_version": 1
+}

@@ -6,7 +6,7 @@ clients of it. Model components are plugins; see :mod:`neurovascularsim.registry
 """
 
 from . import registry, units
-from .vascular import networks, rheology  # noqa: F401  (registers built-in plugins)
+from .vascular import networks, perturbations, rheology  # noqa: F401  (registers built-in plugins)
 
 __version__ = "0.1.0"
 

@@ -53,6 +53,13 @@ sol = solve_flow(case.graph, case.pressure_bc)
 print(sol.flow, sol.hematocrit)
 ```
 
+Experiments are JSON specs; runs are saved with provenance:
+
+```bash
+nvs run examples/suarez2021a_stealing.json   # run a spec, save it under runs/
+nvs serve                                    # web API on http://127.0.0.1:8000 (docs at /docs)
+```
+
 ## Data
 
 Lab recordings are not part of this repository. Tests and demos use synthetic

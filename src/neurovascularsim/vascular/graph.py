@@ -87,6 +87,24 @@ class VascularGraph:
         """A copy with new edge diameters (e.g. after dilation)."""
         return replace(self, diameter=np.array(diameter, dtype=float), meta=dict(self.meta))
 
+    def to_dict(self) -> dict:
+        """JSON-ready description (SI units), e.g. for the web viewer."""
+        d = {
+            "n_nodes": self.n_nodes,
+            "n_edges": self.n_edges,
+            "positions": self.positions.tolist(),
+            "edges": self.edges.tolist(),
+            "diameter": self.diameter.tolist(),
+            "length": self.length.tolist(),
+            "vessel_type": [VesselType(int(t)).name for t in self.vessel_type],
+            "meta": dict(self.meta),
+        }
+        if self.depth is not None:
+            d["depth"] = np.asarray(self.depth, dtype=float).tolist()
+        if self.layer is not None:
+            d["layer"] = np.asarray(self.layer, dtype=int).tolist()
+        return d
+
     def incidence(self) -> tuple[np.ndarray, np.ndarray]:
         """For each node, the edges leaving and entering it (by orientation)."""
         out_edges = [[] for _ in range(self.n_nodes)]

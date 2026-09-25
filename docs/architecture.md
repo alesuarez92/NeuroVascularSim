@@ -137,9 +137,11 @@ web/                React front end (after the service)
 
 ## Build order
 
-1. Engine core: registry, graph, rheology, flow, test networks. **(now)**
-2. Experiment spec and run records.
-3. FastAPI service, with a job runner.
-4. Web front end: network viewer in 3D, experiment editor, results.
+1. Engine core: registry, graph, rheology, flow, test networks. **(done)**
+2. Experiment spec and run records (`experiment.py`, `nvs run`). **(done)**
+3. FastAPI service (`server/app.py`, `nvs serve`): plugins, networks,
+   validation, runs. **(done; synchronous runs; job runner comes with
+   large 3D networks)**
+4. Web front end: network viewer in 3D, experiment editor, results. **(next)**
 5. Then widen the science: realistic mouse networks, pathways (astrocyte,
    EC conduction, pericytes), oxygen, BOLD, the 2D column.

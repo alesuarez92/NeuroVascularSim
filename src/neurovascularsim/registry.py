@@ -43,6 +43,10 @@ KINDS: dict[str, str] = {
         "Factory returning a NetworkCase (graph, pressure boundary conditions, "
         "inlet hematocrit, metadata)."
     ),
+    "perturbation": (
+        "Factory returning f(case: NetworkCase) -> NetworkCase, a modified copy "
+        "(e.g. dilated or constricted vessels)."
+    ),
 }
 
 
