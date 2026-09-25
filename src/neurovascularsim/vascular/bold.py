@@ -18,8 +18,9 @@ as generalised by Stephan et al. 2007):
 - ``eps``: the ratio of intravascular to extravascular signal at rest, poorly
   known and best treated as free (Stephan et al. 2007).
 
-The values are those of Obata et al. 2004 as reported in Stephan et al. 2007
-(NeuroImage 38:387). ``r0`` and ``eps`` for fields above 1.5 T must be set
+The values are those of Obata et al. 2004 (NeuroImage 21:144,
+doi:10.1016/j.neuroimage.2003.08.040) as reported in Stephan et al. 2007
+(NeuroImage 38:387, doi:10.1016/j.neuroimage.2007.07.040). ``r0`` and ``eps`` for fields above 1.5 T must be set
 by the user: they are not scaled automatically.
 
 The signal change of a condition against the baseline includes both the

@@ -55,10 +55,11 @@ from ..units import MMHG, UM
 from .graph import VascularGraph, VesselType
 from .networks import NetworkCase
 
-# Approximate laminar boundaries for mouse S1 (upper edge of L1, L2/3, L4, L5,
-# L6 and bottom of L6), in um below the pia. To be refined with the owner's
-# data or an atlas.
-LAYER_BOUNDS_UM = (0.0, 120.0, 400.0, 550.0, 850.0, 1200.0)
+# Laminar boundaries of mouse vibrissal S1 (bottom of L1, L2/3, L4, L5 and
+# L6), from the measured fractions of cortical depth in Hooks et al. 2011
+# (PLoS Biol 9:e1000572, doi:10.1371/journal.pbio.1000572, Table 1: 0.09,
+# 0.31, 0.46, 0.74, 1.0), scaled to the column depth of 1200 um.
+LAYER_BOUNDS_UM = (0.0, 108.0, 372.0, 552.0, 888.0, 1200.0)
 LAYER_NAMES = ("L1", "L2/3", "L4", "L5", "L6")
 
 
@@ -70,21 +71,21 @@ class MouseColumnParams:
     depth_um: float = 1200.0  # mean mouse cortical depth (Schmid et al. 2017)
     capillary_length_density: float = 0.9  # m/mm^3 (Ji et al. 2021)
     capillary_diameter_mean_um: float = 4.0  # Schmid et al. 2017
-    capillary_diameter_sd_um: float = 1.0
+    capillary_diameter_sd_um: float = 1.0  # Schmid et al. 2017 (doi:10.1371/journal.pcbi.1005392)
     # Capillary bed: "nearest_neighbour" (evenly spaced junctions, each joined
     # to its nearest neighbours up to degree 3) or "foam" (Voronoi edges; the
     # earlier model, whose segments are too short; see docs/networks.md).
     capillary_bed: str = "nearest_neighbour"
-    capillary_min_distance_fraction: float = 0.9  # junction exclusion radius / mean spacing
-    capillary_edge_noise: float = 0.3  # randomness in which neighbours are joined (log-normal SD)
+    capillary_min_distance_fraction: float = 0.9  # model choice: junction exclusion radius / mean spacing
+    capillary_edge_noise: float = 0.3  # model choice (log-normal SD of neighbour choice), fitted to segment lengths
     tortuosity: float = 1.27  # branch path length / end-to-end distance (Ji et al. 2021)
     l4_density_boost: float = 0.1  # shallow L4 peak (Blinder et al. 2013)
     pa_density_per_mm2: float = 17.4  # mouse sensory cortex (Adams et al. 2018)
     av_to_pa_ratio: float = 3.0  # Blinder et al. 2013 (mouse)
     pa_diameter_median_um: float = 11.0  # Blinder et al. 2013
     av_diameter_median_um: float = 9.0  # Blinder et al. 2013
-    trunk_terminal_diameter_um: float = 6.0
-    connector_diameter_um: float = 6.0
+    trunk_terminal_diameter_um: float = 6.0  # model choice: no source found for the taper
+    connector_diameter_um: float = 6.0  # model choice: no source
     # Offshoot trees grown from each connection into the capillary mesh:
     # arteriolar (the arteriole-capillary transition zone; Mughal et al. 2023)
     # and postcapillary venular. Generations are calibrated so capillary
@@ -96,14 +97,14 @@ class MouseColumnParams:
     venular_offshoot_diameters_um: tuple = (8.0, 7.0, 6.0, 5.0)
     branch_spacing_um: float = 60.0  # calibrated to capillary branch order (Ji et al. 2021)
     connections_per_level: int = 1
-    pa_min_depth_fraction: float = 0.3
+    pa_min_depth_fraction: float = 0.3  # model choice: no source for penetration depths
     p_in_mmhg: float = 60.0
     p_out_mmhg: float = 10.0
     # "penetrating_tops": pressures fixed where arterioles and venules enter
     # the cortex (standard for cropped networks; Blinder et al. 2013, Schmid
     # et al. 2017). "pial_tree": one inlet and one outlet feeding pial trees.
     boundary: str = "penetrating_tops"
-    hematocrit: float = 0.45
+    hematocrit: float = 0.45  # assumption: systemic value, not from a cited paper
     seed: int = 0
 
 

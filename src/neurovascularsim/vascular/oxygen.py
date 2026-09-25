@@ -20,10 +20,10 @@ the surrounding tissue, where oxygen diffuses and is consumed.
 
 Default parameters for mouse cortex: the hemoglobin dissociation of C57BL/6
 mice (n = 2.59, P50 = 40.2 mmHg), CMRO2 ~2.3 umol/g/min and pial arteriole
-PO2 ~100 mmHg, as used by Sakadzic et al. 2014 (Nat Commun 5:5734) to match
-their measurements. Solubility, diffusivity, hemoglobin binding capacity,
-Km and the Nusselt number are standard physical values, not fitted. See
-docs/oxygen.md.
+PO2 ~100 mmHg, as used by Sakadzic et al. 2014 (Nat Commun 5:5734,
+doi:10.1038/ncomms6734) to match their measurements. The other values are
+cited where they are defined (OxygenParams); the Nusselt number and tissue
+density are assumptions and say so. See docs/oxygen.md.
 """
 
 from __future__ import annotations
@@ -48,12 +48,22 @@ class OxygenParams:
     p50_mmhg: float = 40.2  # C57BL/6 mice (Sakadzic et al. 2014)
     hill_n: float = 2.59  # C57BL/6 mice (Sakadzic et al. 2014)
     cmro2_umol_per_g_min: float = 2.3  # Sakadzic et al. 2014 (model input matching their data)
-    km_mmhg: float = 1.0  # Michaelis-Menten constant of consumption
-    tissue_density_g_per_ml: float = 1.05
-    alpha_uM_per_mmhg: float = 1.39  # O2 solubility, plasma and tissue, 37 C
-    diffusivity_m2_per_s: float = 2.0e-9  # O2 in tissue
-    hb_capacity_mM: float = 20.3  # O2 bound per volume of red cells at full saturation (MCHC ~33 g/dL)
-    nusselt: float = 2.5  # intravascular mass transfer
+    # Michaelis-Menten constant, "usually assumed to be about 1 mmHg" (Gagnon et al. 2016,
+    # doi:10.3389/fncom.2016.00082); measured closer to 5-10 mmHg in muscle (Golub & Pittman 2012,
+    # doi:10.1152/ajpheart.00131.2012). Worth a sensitivity run.
+    km_mmhg: float = 1.0
+    tissue_density_g_per_ml: float = 1.05  # assumption: no source found; only converts CMRO2 units
+    # O2 solubility and diffusivity, as used by Fang et al. 2008 (Opt Express 16:17530,
+    # doi:10.1364/oe.16.17530) for mouse cortex: 1.27e-15 umol/(um^3 mmHg) and 2.4e3 um^2/s.
+    # One solubility serves plasma and tissue here; Lucker et al. 2018 (doi:10.3389/fphys.2018.00420)
+    # give 1.11 (plasma) and 1.53 (tissue) uM/mmHg.
+    alpha_uM_per_mmhg: float = 1.27
+    diffusivity_m2_per_s: float = 2.4e-9
+    # Heme (O2-binding site) density of red cells, 2.03e-5 mol/cm^3 (Lucker et al. 2018, Table 1).
+    hb_capacity_mM: float = 20.3
+    # Intravascular mass transfer: an assumption, not a value from a paper. It depends on hematocrit
+    # (Lucker et al. 2017, doi:10.1111/micc.12337); method as in Hellums et al. 1996 (doi:10.1007/BF02770991).
+    nusselt: float = 2.5
     voxel_um: float = 10.0
     sample_um: float = 5.0  # length of vessel steps
     tol_mmhg: float = 0.05

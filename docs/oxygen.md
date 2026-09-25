@@ -40,16 +40,30 @@ activation).
 | Hill n, P50 | 2.59, 40.2 mmHg | C57BL/6 mice, as used by Sakadžić et al. 2014 |
 | CMRO2 (maximal, M0) | 2.3 µmol/g/min | Sakadžić et al. 2014 (model value matching their data) |
 | Pial arteriole PO2 (inflow) | 100 mmHg | Sakadžić et al. 2014 |
-| O2 solubility α | 1.39 µM/mmHg | standard physical value (plasma, 37 °C) |
-| O2 diffusivity in tissue | 2.0·10⁻⁹ m²/s | standard value (range ~1.5–2.4·10⁻⁹) |
-| Hemoglobin O2 capacity | 20.3 mM of red cells | standard (MCHC ~33 g/dL) |
-| Km of consumption | 1 mmHg | standard assumption |
-| Nusselt number | 2.5 | standard assumption for capillaries |
+| O2 solubility α (plasma and tissue) | 1.27 µM/mmHg | Fang et al. 2008 (mouse cortex VAN model); Lücker et al. 2018 give 1.11 (plasma) and 1.53 (tissue) |
+| O2 diffusivity in tissue | 2.4·10⁻⁹ m²/s | Fang et al. 2008; Lücker et al. 2018 (2.41·10⁻⁵ cm²/s) |
+| Heme (O2-binding) density of red cells | 20.3 mM | Lücker et al. 2018, Table 1 (2.03·10⁻⁵ mol/cm³) |
+| Km of consumption | 1 mmHg | "usually assumed to be about 1 mmHg" (Gagnon et al. 2016); measured 5–10 mmHg in muscle (Golub & Pittman 2012) — worth a sensitivity run |
+| Nusselt number | 2.5 | **assumption**, not from a paper; it depends on hematocrit (Lücker et al. 2017); method as in Hellums et al. 1996 |
+| Tissue density | 1.05 g/mL | **assumption**, no source found; only converts CMRO2 units |
 
-Sakadžić S et al. 2014, *Nat Commun* 5:5734,
-[doi:10.1038/ncomms6734](https://doi.org/10.1038/ncomms6734), cited from
-PubMed. The rows marked "standard" are not fitted. They should be checked
-against the owner's preferred sources.
+All cited from PubMed:
+- Sakadžić S et al. 2014, *Nat Commun* 5:5734,
+  [doi:10.1038/ncomms6734](https://doi.org/10.1038/ncomms6734).
+- Fang Q et al. 2008, *Opt Express* 16:17530,
+  [doi:10.1364/oe.16.17530](https://doi.org/10.1364/oe.16.17530).
+- Lücker A, Secomb TW, Weber B, Jenny P 2018, *Front Physiol* 9:420,
+  [doi:10.3389/fphys.2018.00420](https://doi.org/10.3389/fphys.2018.00420).
+- Lücker A et al. 2017, *Microcirculation* 24:e12337,
+  [doi:10.1111/micc.12337](https://doi.org/10.1111/micc.12337).
+- Gagnon L et al. 2016, *Front Comput Neurosci* 10:82,
+  [doi:10.3389/fncom.2016.00082](https://doi.org/10.3389/fncom.2016.00082).
+- Golub AS, Pittman RN 2012, *Am J Physiol Heart* 303:H47,
+  [doi:10.1152/ajpheart.00131.2012](https://doi.org/10.1152/ajpheart.00131.2012).
+- Hellums JD et al. 1996, *Ann Biomed Eng* 24:1,
+  [doi:10.1007/BF02770991](https://doi.org/10.1007/BF02770991).
+
+Values not taken from a paper are marked **assumption**.
 
 ### Tests (all pass)
 
@@ -63,11 +77,11 @@ against the owner's preferred sources.
 
 | Quantity | Default network | Deep arterioles + 1.3 × trunks | Measured (Sakadžić 2014) |
 |---|---|---|---|
-| OEF | 0.14 | 0.13 | 0.35 |
-| Share of extraction by arterioles | 0.16 | 0.15 | 0.50 |
-| Tissue PO2 mean (hypoxic < 10 mmHg) | 21 mmHg (50%) | 38 mmHg (18%) | little hypoxia expected |
-| Median capillary PO2 | 8 mmHg | 44 mmHg | (in figures) |
-| CMRO2 achieved | 1.35 | 2.06 µmol/g/min | 2.3 (input) |
+| OEF | 0.19 | 0.10 | 0.35 |
+| Share of extraction by arterioles | 0.21 | 0.15 | 0.50 |
+| Tissue PO2 mean (hypoxic < 10 mmHg) | 28 mmHg (31%) | 39 mmHg (18%) | little hypoxia expected |
+| Median capillary PO2 | 27 mmHg | 41 mmHg | (in figures) |
+| CMRO2 achieved | 1.77 | 2.06 µmol/g/min | 2.3 (input) |
 
 "Deep arterioles + 1.3 × trunks" means `pa_min_depth_fraction` 0.8, trunks
 1.3 × wider and tapering to 8 µm.

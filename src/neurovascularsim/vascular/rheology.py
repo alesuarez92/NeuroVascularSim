@@ -36,7 +36,8 @@ def viscosity_pries_invivo(diameter, hematocrit):
     "viscosity",
     "pries_invivo",
     description="In-vivo apparent viscosity vs diameter and hematocrit.",
-    reference="Pries et al. 1994 Circ Res; as used in Suarez et al. 2021 J Theor Biol",
+    reference="Pries et al. 1994 Circ Res 75:904, doi:10.1161/01.res.75.5.904; as used in Suarez et al. 2021 "
+              "J Theor Biol 529:110856, doi:10.1016/j.jtbi.2021.110856",
 )
 def _pries_invivo():
     return viscosity_pries_invivo
@@ -66,7 +67,7 @@ def viscosity_pries_invitro(diameter, hematocrit):
     "viscosity",
     "pries_invitro",
     description="In-vitro apparent viscosity vs diameter and hematocrit (no endothelial surface layer).",
-    reference="Pries et al. 1992 Am J Physiol 263:H1770",
+    reference="Pries et al. 1992 Am J Physiol 263:H1770, doi:10.1152/ajpheart.1992.263.6.H1770",
 )
 def _pries_invitro():
     return viscosity_pries_invitro
@@ -124,7 +125,8 @@ def phase_separation_pries(fqb, d_alpha, d_beta, d_parent, h_parent):
     "phase_separation",
     "pries",
     description="Empirical red-cell phase separation at bifurcations.",
-    reference="Pries & Secomb 2005/2008; as used in Suarez et al. 2021 J Theor Biol",
+    reference="Pries & Secomb 2005 Am J Physiol Heart 289:H2657, doi:10.1152/ajpheart.00297.2005 (coefficients "
+              "as tabulated in Suarez et al. 2021 J Theor Biol 529:110856, doi:10.1016/j.jtbi.2021.110856)",
 )
 def _pries_phase():
     return phase_separation_pries

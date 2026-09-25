@@ -53,7 +53,8 @@ def with_depth(graph: VascularGraph, axis: int = 2, surface: str = "min") -> Vas
 
 
 def find_penetrating_trees(graph: VascularGraph, large_diameter_um: float = 6.5,
-                           surface_depth_um: float = 30.0, min_extent_um: float = 100.0) -> list[PenetratingTree]:
+                           surface_depth_um: float = 30.0, min_extent_um: float = 100.0,
+                           min_extent_without_end_um: float = 300.0) -> list[PenetratingTree]:
     """Components of vessels wider than ``large_diameter_um`` that start at the
     surface and reach at least ``min_extent_um`` into the cortex (short
     fragments near the surface are not penetrating vessels)."""
@@ -79,6 +80,11 @@ def find_penetrating_trees(graph: VascularGraph, large_diameter_um: float = 6.5,
         # Entry points: vessel ends at the surface (penetrating-vessel tops, or
         # pial vessels cut at the faces of a crop); else the shallowest node.
         ends = [int(n) for n in nodes if degree[n] == 1 and depth_um[n] <= surface_depth_um]
+        # Without a vessel end at the surface (e.g. joined to pial vessels), only a deep tree
+        # counts: short wide chains near the surface are offshoots, not penetrating vessels.
+        # Model choice, not a value from a paper.
+        if not ends and depth_um[nodes].max() - depth_um[entry] < min_extent_without_end_um:
+            continue
         at_entry = tree_edges[(graph.edges[tree_edges] == entry).any(axis=1)]
         trees.append(PenetratingTree(
             edges=tree_edges,

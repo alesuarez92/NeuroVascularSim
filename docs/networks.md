@@ -141,7 +141,11 @@ flow.
   measured range reaches 200 µm).
 - **Capillary hematocrit:** a few low-flow capillaries reach extreme values,
   from phase separation at very low flows.
-- **Layer boundaries** are approximate for mouse S1.
+- **Layer boundaries** are the measured fractions of cortical depth in mouse
+  vibrissal S1 (Hooks et al. 2011, *PLoS Biol* 9:e1000572,
+  [doi:10.1371/journal.pbio.1000572](https://doi.org/10.1371/journal.pbio.1000572)),
+  scaled to the 1200 µm column: 108, 372, 552, 888 µm. Those fractions come
+  from young mice (P20–25).
 
 ## Reconstructed networks (the Kleinfeld graphs)
 
