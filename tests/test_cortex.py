@@ -114,6 +114,22 @@ def test_pial_tree_boundary_mode():
     assert {VesselType.PIAL_ARTERY, VesselType.PIAL_VEIN} <= types
 
 
+def test_branches_per_trunk_limits_connections():
+    """pa/av_branches_per_trunk set how many levels of each trunk connect to the bed."""
+    def connectors(**kw):
+        g = registry.create("network", "mouse_cortex_synthetic", size_x_um=300, size_y_um=300, depth_um=600,
+                            seed=4, pa_min_depth_fraction=1.0, **kw).graph
+        trunk_nodes = set(g.edges[g.vessel_type == VesselType.PENETRATING_ARTERIOLE].ravel().tolist())
+        n_pa = int(np.sum(g.depth[list(trunk_nodes)] == 0))
+        pre = g.edges[g.vessel_type == VesselType.PRECAPILLARY_ARTERIOLE]
+        return n_pa, sum(1 for a, b in pre if (a in trunk_nodes) != (b in trunk_nodes))
+
+    n_pa, every_level = connectors()
+    _, three = connectors(pa_branches_per_trunk=3)
+    assert three <= n_pa * 4  # 3 levels, the deepest with one extra branch
+    assert three < every_level
+
+
 def test_unknown_parameter_is_rejected():
     with pytest.raises(TypeError):
         registry.create("network", "mouse_cortex_synthetic", bogus=1)

@@ -97,6 +97,11 @@ class MouseColumnParams:
     venular_offshoot_diameters_um: tuple = (8.0, 7.0, 6.0, 5.0)
     branch_spacing_um: float = 60.0  # calibrated to capillary branch order (Ji et al. 2021)
     connections_per_level: int = 1
+    # Number of levels along each trunk that connect to the bed, spread evenly
+    # from the first level below the surface to the trunk end. 0 connects
+    # every level (every branch_spacing_um).
+    pa_branches_per_trunk: int = 0
+    av_branches_per_trunk: int = 0
     pa_min_depth_fraction: float = 0.3  # model choice: no source for penetration depths
     p_in_mmhg: float = 60.0
     p_out_mmhg: float = 10.0
@@ -438,7 +443,7 @@ def _build_mouse_column(p: MouseColumnParams, foam_length_density: float) -> Net
 
     seeds: dict[int, list[int]] = {VesselType.PRECAPILLARY_ARTERIOLE: [], VesselType.VENULE: []}
 
-    def penetrating(xy, median_d, trunk_type, connector_type):
+    def penetrating(xy, median_d, trunk_type, connector_type, n_branches):
         """Grow penetrating trunks at the surface points ``xy`` and connect them to the bed; return their tops and diameters."""
         tops, top_d = [], []
         for x, y in xy:
@@ -453,7 +458,11 @@ def _build_mouse_column(p: MouseColumnParams, foam_length_density: float) -> Net
             if len(nodes) > 1:
                 add_edges(np.column_stack([nodes[:-1], nodes[1:]]), 0.5 * (d_nodes[:-1] + d_nodes[1:]), trunk_type)
             allpos = np.vstack(positions)
-            for k, node in enumerate(nodes[1:], start=1):
+            levels = range(1, len(nodes))
+            if n_branches > 0 and len(nodes) > 1:
+                levels = np.unique(np.round(np.linspace(len(nodes) - 1, 1, max(1, n_branches))).astype(int))
+            for k in levels:
+                node = nodes[k]
                 picks = p.connections_per_level + (1 if k == len(nodes) - 1 else 0)
                 _, cand = tree.query(allpos[node], k=12)
                 # Nearest free capillary junctions, those with a spare slot
@@ -469,8 +478,9 @@ def _build_mouse_column(p: MouseColumnParams, foam_length_density: float) -> Net
         return np.array(tops), np.array(top_d)
 
     pa_tops, pa_d = penetrating(pa_xy, p.pa_diameter_median_um, VesselType.PENETRATING_ARTERIOLE,
-                                VesselType.PRECAPILLARY_ARTERIOLE)
-    av_tops, av_d = penetrating(av_xy, p.av_diameter_median_um, VesselType.ASCENDING_VENULE, VesselType.VENULE)
+                                VesselType.PRECAPILLARY_ARTERIOLE, p.pa_branches_per_trunk)
+    av_tops, av_d = penetrating(av_xy, p.av_diameter_median_um, VesselType.ASCENDING_VENULE, VesselType.VENULE,
+                                p.av_branches_per_trunk)
 
     # Offshoot trees: breadth-first from the connection points through the
     # capillary mesh; tree edges of generation g become arteriolar (or
@@ -577,6 +587,7 @@ _DEFAULTS = asdict(MouseColumnParams())
     parameters={k: _DEFAULTS[k] for k in (
         "size_x_um", "size_y_um", "depth_um", "seed", "boundary", "capillary_bed", "pa_density_per_mm2", "av_to_pa_ratio",
         "pa_diameter_median_um", "av_diameter_median_um", "branch_spacing_um", "connections_per_level",
+        "pa_branches_per_trunk", "av_branches_per_trunk",
         "arteriolar_offshoot_generations", "venular_offshoot_generations",
         "capillary_length_density", "capillary_diameter_mean_um", "capillary_diameter_sd_um", "tortuosity",
         "l4_density_boost", "p_in_mmhg", "p_out_mmhg", "hematocrit",

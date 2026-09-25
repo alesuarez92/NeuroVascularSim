@@ -135,6 +135,57 @@ flow in the bed is heterogeneous. Many capillaries carry little flow, and
 in-vivo velocity measurements favour the capillaries with visible red-cell
 flow.
 
+### Why capillary flow is uneven (diagnosis, flow only)
+
+Default column, seeds 0–3, in-vitro viscosity, phase separation:
+
+| Quantity | Model | Measured / benchmark |
+|---|---|---|
+| Mean capillary speed | 0.49 mm/s | 0.71 mm/s, range 0.11–3.63 (awake mouse; Li 2019) |
+| Capillaries below 0.1 mm/s | 42% | almost none among flowing capillaries (Li 2019); ~0.45% stalled at any moment (Erdener 2019) |
+| Spread of speeds (SD / mean) | 2.3 | 1.4–1.6 in simulations on reconstructed networks (Schmid 2017) |
+| Red-cell flux, layer 1 : layer 5 | 3.3 | 41 : 38 RBC/s, about 1.1 (Li 2019) |
+
+Experiments (each changes one thing):
+- **Short paths dominate.** Capillaries 1–2 segments from both an
+  arteriole and a venule carry 3–6 mm/s, those 10 or more segments away
+  ~0.2 mm/s. Venules sit closer to the capillaries than arterioles (median
+  2 vs 4 segments).
+- **Trunk pressure loss sets part of the depth gradient.** Arterial
+  pressure falls ~35% along the penetrating arterioles by 400 µm. This is
+  in line with Schmid 2017, where arterioles take 51–61% of the pressure
+  drop for deep paths, so the trunks are not the fault. Widening trunks 3×
+  flattens the gradient but has no measured support; removing the taper
+  does not help.
+- **Capillary diameter spread and the rheology laws matter little:**
+  uniform 4 µm capillaries lower the spread from 2.0 to 1.7; Newtonian
+  blood without phase separation leaves it at 1.85.
+- **Measured branching helps only a little.** `pa_branches_per_trunk = 7`
+  (about 7 offshoots per penetrating arteriole: 52 offshoots from 7
+  arterioles in Grant 2019, our count) with 3 arteriolar offshoot
+  generations lowers the spread to 1.9 and the slow share to 36%, but the
+  layer 1 : layer 5 flux ratio stays at ~4. Fewer venule branches push the
+  capillary branch order above the measured 3.4 ± 0.2. The defaults are
+  unchanged (every level connects).
+- **The in-vivo viscosity law** (much stiffer capillaries) still gives a
+  layer 1 : layer 5 ratio of 3–4.5. Simulations on reconstructed networks
+  also give slower deep flow (transit time 0.07 s at 0–0.2 mm vs 0.52 s at
+  0.8–1.0 mm; Schmid 2017). Network layout alone therefore does not explain
+  the measured flat flux; adaptation of vessel diameters to local signals
+  (Pries et al. 1998) is the next candidate.
+
+Sources:
+- Li B, …, Sakadžić S 2019, *eLife* 8:e42299,
+  [doi:10.7554/eLife.42299](https://doi.org/10.7554/eLife.42299).
+- Erdener ŞE, …, Boas DA 2019, *J Cereb Blood Flow Metab* 39:886,
+  [doi:10.1177/0271678X17743877](https://doi.org/10.1177/0271678X17743877).
+- Schmid F, Tsai PS, Kleinfeld D, Jenny P, Weber B 2017, *PLoS Comput Biol*
+  13:e1005392, [doi:10.1371/journal.pcbi.1005392](https://doi.org/10.1371/journal.pcbi.1005392).
+- Grant RI, Hartmann DA, …, Shih AY 2019, *J Cereb Blood Flow Metab* 39:411,
+  [doi:10.1177/0271678X17732229](https://doi.org/10.1177/0271678X17732229).
+- Pries AR, Secomb TW, Gaehtgens P 1998, *Am J Physiol* 275:H349,
+  [doi:10.1152/ajpheart.1998.275.2.H349](https://doi.org/10.1152/ajpheart.1998.275.2.H349).
+
 ### Other known gaps
 
 - **Segment-length spread** is narrower than measured (p90 85 µm; the
