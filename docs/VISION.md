@@ -133,9 +133,15 @@ equation that cannot reproduce the detail) is not the goal. Instead:
 1. Detailed simulations are run over many inputs, boundary and initial
    conditions, and every run is stored (inputs, conditions, outputs) in a
    standard format, so each run is also training data.
-2. An AI surrogate (emulator) is trained on these runs. It returns the
-   system's outputs fast, without a fixed phenomenological equation, at a
-   chosen resolution (whole column, layer, depth bin).
+2. A surrogate (emulator) is trained on these runs. It returns the
+   system's outputs fast, without a fixed phenomenological equation. It
+   need not be a large AI model: any trained machine-learning model sized
+   to the system (e.g. random forest, gradient boosting, a small neural
+   network); choosing the method is an optimisation for later. The caller
+   picks which outputs and at what resolution, e.g. from the vasculature
+   only inlet/outlet pressure, mean flow speed and oxygen delivery for the
+   whole column, or the same quantities per layer. More outputs or finer
+   resolution are added when a study needs them.
 3. The surrogate and the detailed model share the same interface, so
    either can stand in for a system.
 4. The surrogate reports its uncertainty and flags conditions outside its
