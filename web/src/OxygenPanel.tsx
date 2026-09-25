@@ -61,7 +61,7 @@ export function OxygenPanel({ run }: { run: RunRecord }) {
                   <td className="num">{pct(o?.oef)}</td>
                   <td className="num">{pct(o?.arteriolar_extraction_fraction, 0)}</td>
                   <td className="num">{fmt(o?.cmro2_umol_per_g_min)}</td>
-                  <td className="num">{fmt(o?.tissue_po2_mean)} / {fmt(o?.tissue_po2_p10)}</td>
+                  <td className="num">{o ? `${o.tissue_po2_mean.toFixed(1)} / ${o.tissue_po2_p10.toFixed(1)}` : "–"}</td>
                   <td className="num">{pct(o?.hypoxic_fraction, 0)}</td>
                   <td className="num">{b ? `${b.column_signal_change_pct >= 0 ? "+" : ""}${b.column_signal_change_pct.toFixed(2)}%` : "–"}</td>
                   <td className="num" title="oxygen delivered by blood / consumed by tissue">{fmt(o?.o2_balance)}</td>

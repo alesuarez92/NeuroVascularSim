@@ -8,6 +8,7 @@ export function fmt(x: number | null | undefined, digits = 3): string {
   if (x === null || x === undefined || !Number.isFinite(x)) return "–";
   const a = Math.abs(x);
   if (a !== 0 && (a < 1e-3 || a >= 1e5)) return x.toExponential(2);
+  if (a >= 1000) return x.toFixed(0);
   return x.toPrecision(digits);
 }
 
