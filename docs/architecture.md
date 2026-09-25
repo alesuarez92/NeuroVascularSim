@@ -161,5 +161,10 @@ web/                React front end (after the service)
 7. Background job queue (`jobs.py`, `/api/jobs`): runs on worker threads
    with progress and cancellation; the web app lists jobs and opens the
    result when it finishes. **(done; jobs are kept in memory, runs on disk)**
-8. Then widen the science: pathways (astrocyte, EC
+8. Oxygen transport and BOLD (`vascular/oxygen.py`, `vascular/bold.py`;
+   optional `oxygen` / `bold` blocks in specs; `scale_cmro2` perturbation;
+   the app's Oxygen & BOLD tab with laminar profiles and a tissue PO2 map).
+   **(done, first version; see [oxygen.md](oxygen.md) for parameters,
+   tests and the gaps the synthetic network shows)**
+9. Then widen the science: pathways (astrocyte, EC
    conduction, pericytes), oxygen, BOLD, the 2D column.

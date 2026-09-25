@@ -149,3 +149,8 @@ def test_job_lifecycle(client):
 def test_invalid_job_is_422(client):
     bad = dict(EXAMPLE, network={"name": "nope", "params": {}})
     assert client.post("/api/jobs", json=bad).status_code == 422
+
+
+def test_models_list_oxygen_and_bold_parameters(client):
+    m = client.get("/api/models").json()
+    assert m["oxygen"]["p50_mmhg"] == 40.2 and m["bold"]["field_t"] == 1.5

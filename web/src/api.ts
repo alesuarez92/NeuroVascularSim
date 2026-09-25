@@ -39,7 +39,34 @@ export type ExperimentSpec = {
   network: Component;
   solver: Record<string, unknown>;
   conditions: Condition[];
+  oxygen?: Record<string, unknown> | null;
+  bold?: Record<string, unknown> | null;
   spec_version: number;
+};
+
+export type OxygenSummary = {
+  oef: number | null;
+  arteriolar_extraction_fraction: number | null;
+  cmro2_umol_per_g_min: number;
+  o2_balance: number | null;
+  tissue_po2_mean: number;
+  tissue_po2_p10: number;
+  hypoxic_fraction: number;
+  iterations: number;
+  converged: boolean;
+  depth_profile?: { depth_um: number[]; tissue_po2_mean: number[]; tissue_po2_p10: number[] };
+};
+
+export type TissueSlice = { po2_mmhg: number[][]; voxel_um: number; origin_um: number[] };
+
+export type BoldProfile = {
+  depth_um: number[];
+  signal_change_pct: number[];
+  extravascular_pct: number[];
+  intravascular_pct: number[];
+  column_signal_change_pct: number;
+  by_class_pct: Record<string, number>;
+  params: Record<string, number>;
 };
 
 export type Fields = {
@@ -50,6 +77,10 @@ export type Fields = {
   diameter: number[]; // m
   iterations: number;
   converged: boolean;
+  po2?: number[]; // mmHg, per edge
+  so2?: number[];
+  oxygen?: OxygenSummary;
+  tissue_slice?: TissueSlice;
 };
 
 export type RunRecord = {
@@ -58,7 +89,7 @@ export type RunRecord = {
   created: string;
   provenance: Record<string, unknown>;
   results: Record<string, Fields>;
-  summary: Record<string, { relative_flow: (number | null)[]; hematocrit_change: number[] }>;
+  summary: Record<string, { relative_flow: (number | null)[]; hematocrit_change: number[]; bold?: BoldProfile }>;
 };
 
 export type ClassStats = {
@@ -129,6 +160,7 @@ const post = <T,>(path: string, data: unknown) =>
 export const api = {
   health: () => request<{ status: string; version: string }>("/api/health"),
   plugins: () => request<Plugins>("/api/plugins"),
+  models: () => request<Record<"oxygen" | "bold", Record<string, unknown>>>("/api/models"),
   network: (name: string, params: Record<string, unknown>) =>
     post<NetworkResponse>("/api/networks", { name, params }),
   networkStats: (name: string, params: Record<string, unknown>) =>

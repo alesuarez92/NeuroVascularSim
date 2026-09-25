@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Condition, DataFile, ExperimentSpec, Plugins } from "./api";
 import { ParamField } from "./ParamField";
 import { parseList } from "./params";
+import { buildCondition, conditionParts } from "./conditions";
 
 type Props = {
   plugins: Plugins;
@@ -11,6 +12,7 @@ type Props = {
   running: boolean;
   dataFiles: DataFile[];
   onDataFilesChanged: () => void;
+  models: Record<"oxygen" | "bold", Record<string, unknown>> | null;
 };
 
 const VESSEL_TYPES = [
@@ -54,7 +56,7 @@ function parseTargets(text: string): (string | number)[] {
     .map((s) => (/^\d+$/.test(s) ? Number(s) : s));
 }
 
-export function ExperimentEditor({ plugins, spec, onChange, onRun, running, dataFiles, onDataFilesChanged }: Props) {
+export function ExperimentEditor({ plugins, spec, onChange, onRun, running, dataFiles, onDataFilesChanged, models }: Props) {
   const networks = plugins.network?.plugins ?? [];
   const net = networks.find((p) => p.name === spec.network.name);
   const set = (patch: Partial<ExperimentSpec>) => onChange({ ...spec, ...patch });
@@ -133,19 +135,60 @@ export function ExperimentEditor({ plugins, spec, onChange, onRun, running, data
         ))}
       </fieldset>
 
+      {models && (
+        <fieldset>
+          <legend>Oxygen &amp; BOLD</legend>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={spec.oxygen != null}
+              onChange={(e) => set(e.target.checked ? { oxygen: {} } : { oxygen: null, bold: null })}
+            />
+            Simulate oxygen (vessels and tissue)
+          </label>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={spec.bold != null}
+              disabled={spec.oxygen == null}
+              onChange={(e) => set({ bold: e.target.checked ? {} : null })}
+            />
+            Simulate BOLD (laminar profiles)
+          </label>
+          {(["oxygen", "bold"] as const).map((key) =>
+            spec[key] != null ? (
+              <details key={key}>
+                <summary>{key === "oxygen" ? "Oxygen parameters" : "BOLD parameters"}</summary>
+                {Object.entries(models[key]).map(([name, def]) => (
+                  <ParamField
+                    key={`${key}:${name}`}
+                    name={name}
+                    def={def}
+                    value={(spec[key] as Record<string, unknown>)[name]}
+                    dataFiles={dataFiles}
+                    onUploaded={onDataFilesChanged}
+                    onChange={(v) => set({ [key]: { ...(spec[key] as Record<string, unknown>), [name]: v } })}
+                  />
+                ))}
+                {key === "bold" && (
+                  <p className="hint">
+                    Defaults are the 1.5 T, TE 40 ms values of Obata et al. 2004. At other fields set r0 and epsilon
+                    yourself; they are not scaled automatically.
+                  </p>
+                )}
+              </details>
+            ) : null,
+          )}
+          {spec.oxygen != null && <p className="hint">Oxygen adds ~1–3 min per solve on a full column; runs go to the background.</p>}
+        </fieldset>
+      )}
+
       <fieldset>
         <legend>Conditions (compared with baseline)</legend>
         {spec.conditions.map((c, i) => {
-          const p = c.perturbations[0] ?? { name: "scale_diameter", params: {} };
-          const params = p.params as {
-            edges?: (string | number)[];
-            vessel_types?: string[];
-            layers?: number[];
-            depth_range_um?: number[] | null;
-            factor?: number;
-          };
-          const update = (patch: Record<string, unknown>) =>
-            setCondition(i, { ...c, perturbations: [{ name: "scale_diameter", params: { ...params, ...patch } }] });
+          const { diameter: params, cmro2 } = conditionParts(c);
+          const update = (patch: Record<string, unknown>) => setCondition(i, buildCondition(c, { ...params, ...patch }, cmro2));
+          const setCmro2 = (f: number | null) => setCondition(i, buildCondition(c, params, f));
           return (
             <div className="condition" key={i}>
               <div className="row">
@@ -208,6 +251,20 @@ export function ExperimentEditor({ plugins, spec, onChange, onRun, running, data
                   }}
                 />
               </label>
+              {spec.oxygen != null && (
+                <label className="inline">
+                  CMRO2 factor
+                  <input
+                    type="number"
+                    step="0.05"
+                    min="0"
+                    placeholder="unchanged"
+                    value={cmro2 ?? ""}
+                    title="Tissue oxygen consumption, on the same layers or depth range"
+                    onChange={(e) => setCmro2(e.target.value === "" ? null : Number(e.target.value))}
+                  />
+                </label>
+              )}
               <label className="inline">
                 Diameter factor
                 <input

@@ -13,6 +13,7 @@ import {
 import { SEGMENT_LABELS } from "./colors";
 import { EdgeTable } from "./EdgeTable";
 import { JobList, runToShow } from "./JobList";
+import { OxygenPanel } from "./OxygenPanel";
 import { ExperimentEditor, defaultSolver } from "./ExperimentEditor";
 import { Legend } from "./Legend";
 import { NetworkView } from "./NetworkView";
@@ -56,6 +57,8 @@ export default function App() {
   const [selected, setSelected] = useState<number | null>(null);
   const [viewSettings, setViewSettings] = useState<ViewSettings>(DEFAULT_VIEW);
   const [dataFiles, setDataFiles] = useState<DataFile[]>([]);
+  const [models, setModels] = useState<Record<"oxygen" | "bold", Record<string, unknown>> | null>(null);
+  const [bottomTab, setBottomTab] = useState<"vessels" | "oxygen">("vessels");
   const [error, setError] = useState<string | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   // Jobs submitted from this page, oldest first: a finished run opens by
@@ -73,6 +76,7 @@ export default function App() {
     api.runs().then(setRuns).catch(fail);
     api.dataFiles().then(setDataFiles).catch(fail);
     api.jobs().then(setJobs).catch(fail);
+    api.models().then(setModels).catch(fail);
   }, []);
 
   // Poll while any job is queued or running.
@@ -202,6 +206,7 @@ export default function App() {
             running={jobs.some((j) => submitted.includes(j.id) && jobActive(j))}
             dataFiles={dataFiles}
             onDataFilesChanged={refreshDataFiles}
+            models={models}
           />
         ) : (
           <p className="muted">Connecting to the engine…</p>
@@ -283,6 +288,9 @@ export default function App() {
                   {shownRun && (
                     <>
                       <div>Flow {fmt(toNlPerMin(shownRun.results.baseline.flow[hover.edge]))} nL/min · Hct {fmt(shownRun.results.baseline.hematocrit[hover.edge])}</div>
+                      {shownRun.results.baseline.po2 && (
+                        <div>PO2 {fmt(shownRun.results.baseline.po2[hover.edge])} mmHg · SO2 {fmt(100 * (shownRun.results.baseline.so2?.[hover.edge] ?? NaN))}%</div>
+                      )}
                       {Object.entries(shownRun.summary).map(([label, s]) => (
                         <div key={label}>{label}: {pct(s.relative_flow[hover.edge])}</div>
                       ))}
@@ -296,7 +304,23 @@ export default function App() {
           )}
         </div>
 
-        {network && <EdgeTable graph={network.graph} run={shownRun} selected={highlighted} onHover={setRowHover} onSelect={setSelected} />}
+        {network && (
+          <section className="bottom">
+            <div className="tabs" role="tablist">
+              <button role="tab" aria-selected={bottomTab === "vessels"} className={bottomTab === "vessels" ? "tab active" : "tab"}
+                onClick={() => setBottomTab("vessels")}>Vessels</button>
+              <button role="tab" aria-selected={bottomTab === "oxygen"} className={bottomTab === "oxygen" ? "tab active" : "tab"}
+                onClick={() => setBottomTab("oxygen")}>Oxygen &amp; BOLD</button>
+            </div>
+            {bottomTab === "vessels" ? (
+              <EdgeTable graph={network.graph} run={shownRun} selected={highlighted} onHover={setRowHover} onSelect={setSelected} />
+            ) : shownRun ? (
+              <OxygenPanel run={shownRun} />
+            ) : (
+              <p className="muted pad">Run an experiment with oxygen to see results here.</p>
+            )}
+          </section>
+        )}
       </main>
     </div>
   );

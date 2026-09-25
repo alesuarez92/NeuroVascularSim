@@ -51,6 +51,12 @@ export function SelectionCard({ edge, graph, run, conditions, onAddToCondition, 
             <dd>{fmt((Math.abs(base.flow[edge]) / (Math.PI * (graph.diameter[edge] / 2) ** 2)) * 1e3)} mm/s</dd>
             <dt>Hematocrit</dt>
             <dd>{fmt(base.hematocrit[edge])}</dd>
+            {base.po2 && (
+              <>
+                <dt>PO2 / SO2</dt>
+                <dd>{fmt(base.po2[edge])} mmHg / {fmt(100 * (base.so2?.[edge] ?? NaN))}%</dd>
+              </>
+            )}
             <dt>Pressure</dt>
             <dd>{fmt(toMmHg(base.pressure[a]))} → {fmt(toMmHg(base.pressure[b]))} mmHg</dd>
             {Object.entries(run!.summary).map(([label, s]) => (

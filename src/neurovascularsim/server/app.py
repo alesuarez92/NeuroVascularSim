@@ -106,6 +106,19 @@ def create_app(run_dir: str = DEFAULT_RUN_DIR, web_dir: str | None = DEFAULT_WEB
             for kind, names in registry.available().items()
         }
 
+    @app.get("/api/models")
+    def models():
+        """Optional models run after flow, with their parameters and defaults."""
+        from dataclasses import fields
+
+        from ..vascular.bold import BoldParams
+        from ..vascular.oxygen import OxygenParams
+
+        return {
+            name: {f.name: f.default for f in fields(cls)}
+            for name, cls in (("oxygen", OxygenParams), ("bold", BoldParams))
+        }
+
     @app.post("/api/networks")
     def network(req: NetworkRequest):
         try:

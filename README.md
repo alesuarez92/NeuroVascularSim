@@ -70,7 +70,9 @@ model parameter, upload graph files, and colour vessels by type, segment,
 diameter, layer, depth, flow or hematocrit. You can also magnify vessel
 widths, hide vessel classes, cut a depth slab, click a vessel to inspect it
 or add it to an experiment condition, and compare a network's statistics
-with published measurements. Build it once and `nvs serve` serves it:
+with published measurements. Experiments can include oxygen transport
+(vessels and tissue) and laminar BOLD profiles; runs go to a background job
+queue. Build it once and `nvs serve` serves it:
 
 ```bash
 cd web && npm install && npm run build   # then: nvs serve

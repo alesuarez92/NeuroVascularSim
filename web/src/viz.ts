@@ -24,7 +24,10 @@ export type ColorBy =
   | { kind: "depth" }
   | { kind: "relflow"; label: string }
   | { kind: "hematocrit"; label: string }
-  | { kind: "flow"; label: string };
+  | { kind: "flow"; label: string }
+  | { kind: "po2"; label: string }
+  | { kind: "so2"; label: string }
+  | { kind: "so2change"; label: string };
 
 export type Legend =
   | { kind: "categorical"; title: string; items: { color: string; label: string }[] }
@@ -46,6 +49,15 @@ export function colorByOptions(run: RunRecord | null, graph?: Graph): { value: C
   for (const label of Object.keys(run.results)) {
     opts.push({ value: { kind: "flow", label }, label: `Flow: ${label}` });
     opts.push({ value: { kind: "hematocrit", label }, label: `Hematocrit: ${label}` });
+    if (run.results[label].po2) {
+      opts.push({ value: { kind: "po2", label }, label: `PO2: ${label}` });
+      opts.push({ value: { kind: "so2", label }, label: `SO2: ${label}` });
+    }
+  }
+  for (const label of Object.keys(run.summary)) {
+    if (run.results[label]?.so2 && run.results.baseline?.so2) {
+      opts.push({ value: { kind: "so2change", label }, label: `SO2 change: ${label}` });
+    }
   }
   return opts;
 }
@@ -126,6 +138,32 @@ export function computeView(graph: Graph, run: RunRecord | null, by: ColorBy): {
     return {
       colors: change.map((c) => diverging(c, limit)),
       legend: { kind: "diverging", title: `Flow change vs baseline (${by.label})`, limit, unit: "%" },
+    };
+  }
+  if (by.kind === "so2change") {
+    const base = run.results.baseline.so2 ?? [];
+    const cond = run.results[by.label]?.so2 ?? [];
+    const change = cond.map((y, k) => (y - base[k]) * 100); // percentage points
+    const finite = change.filter(Number.isFinite).map(Math.abs).sort((a, b) => a - b);
+    const limit = symmetricLimit([finite.length ? finite[Math.ceil(0.95 * finite.length) - 1] : 0]);
+    return {
+      colors: change.map((c) => diverging(c, limit)),
+      legend: { kind: "diverging", title: `SO2 change vs baseline (${by.label}), points`, limit, unit: "" },
+    };
+  }
+  if (by.kind === "po2" || by.kind === "so2") {
+    const f = run.results[by.label];
+    const vals = (by.kind === "po2" ? f.po2 : f.so2?.map((y) => y * 100)) ?? [];
+    const max = by.kind === "po2" ? Math.max(...vals.filter(Number.isFinite), 1) : 100;
+    return {
+      colors: vals.map((v) => sequential(v / max)),
+      legend: {
+        kind: "sequential",
+        title: by.kind === "po2" ? `Vessel PO2 (${by.label})` : `Hemoglobin saturation (${by.label})`,
+        min: 0,
+        max,
+        unit: by.kind === "po2" ? "mmHg" : "%",
+      },
     };
   }
   const fields = run.results[by.label];
