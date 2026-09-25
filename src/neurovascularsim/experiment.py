@@ -219,6 +219,7 @@ def run_experiment(spec: ExperimentSpec, progress: Callable[[str, int, int], Non
     """
     from .vascular.bold import BoldParams, bold_profile
     from .vascular.oxygen import OxygenParams, solve_oxygen
+    from .vascular.summary import flow_summary
 
     spec.validate()
     total = 2 + len(spec.conditions)
@@ -234,6 +235,8 @@ def run_experiment(spec: ExperimentSpec, progress: Callable[[str, int, int], Non
         sol = solve_flow(case.graph, case.pressure_bc, inlet_hematocrit=case.inlet_hematocrit, **solver)
         out = _fields(sol)
         out["diameter"] = case.graph.diameter.tolist()
+        out["mesoscopic"] = {r: flow_summary(case.graph, sol.flow, sol.hematocrit, sol.pressure, case.pressure_bc, r)
+                             for r in (("column", "layer") if case.graph.depth is not None else ("column",))}
         if oxygen is not None:
             ox = solve_oxygen(case.graph, sol, oxygen, cmro2_scales=case.meta.get("cmro2_scales"),
                               inlet_nodes=_inlet_nodes(case, sol))

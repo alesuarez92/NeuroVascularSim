@@ -166,5 +166,13 @@ web/                React front end (after the service)
    the app's Oxygen & BOLD tab with laminar profiles and a tissue PO2 map).
    **(done, first version; see [oxygen.md](oxygen.md) for parameters,
    tests and the gaps the synthetic network shows)**
-9. Then widen the science: pathways (astrocyte, EC
+9. Mesoscopic summaries (`vascular/summary.py`): every solve in a run
+   stores standard outputs for the whole column and per cortical layer
+   (inflow, perfusion, inlet/outlet pressure; per region capillary speed
+   mean, median, spread and slow share, red-cell flow, capillary pressure,
+   blood volume fraction). Depth bins are available from Python. These are
+   the outputs learned mesoscopic models will be trained on (see
+   VISION.md, design principles). **(done, flow only; oxygen per layer
+   when a study needs it)**
+10. Then widen the science: pathways (astrocyte, EC
    conduction, pericytes), oxygen, BOLD, the 2D column.
