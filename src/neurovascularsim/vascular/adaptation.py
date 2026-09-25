@@ -42,7 +42,8 @@ Differences from the published model, stated plainly:
   venular offshoots) or "all". ``adapt_types`` overrides it with an explicit
   list of vessel types.
 - The pressure stimulus uses the transmural pressure, blood pressure minus
-  ``tissue_pressure_mmhg`` (default 0, i.e. no tissue pressure).
+  ``tissue_pressure_mmhg`` (default 5.1 mmHg, measured mouse intracranial
+  pressure; see AdaptationParams).
 - Flow during adaptation uses the in-vitro viscosity law without phase
   separation (fast); the final network is solved with any laws.
 """
@@ -77,9 +78,18 @@ class AdaptationParams:
     metabolic_signal: float = 0.1  # per um of vessel; calibrated to capillary diameter 4 +/- 1 um (see module doc)
     min_diameter_um: float = 2.5  # floor instead of pruning (model choice)
     tolerance: float = 1e-3  # stop when the median |S_tot| of adapting vessels falls below this
+    # Only capillaries by default: precapillary arterioles carry smooth muscle
+    # or ensheathing pericytes that set their diameter actively (Hill et al.
+    # 2015, Neuron 87:95, doi:10.1016/j.neuron.2015.06.001) and measure ~9 um
+    # (Grant et al. 2019, J Cereb Blood Flow Metab 39:411,
+    # doi:10.1177/0271678X17732229); adapting them shrinks them to ~4 um.
     scope: str = "capillaries"  # see SCOPES
     adapt_types: tuple | None = None  # explicit vessel types to adapt (overrides scope)
-    tissue_pressure_mmhg: float = 0.0  # extravascular pressure for the transmural pressure
+    # Extravascular pressure for the transmural pressure: intracranial pressure
+    # 5.1 +/- 1.2 mmHg in anaesthetised adult C57BL/6 mice (Feiler et al. 2010,
+    # J Neurosci Methods 190:164, doi:10.1016/j.jneumeth.2010.05.005); other
+    # mouse studies report 3.5-7 mmHg.
+    tissue_pressure_mmhg: float = 5.1
 
 
 SCOPES = {

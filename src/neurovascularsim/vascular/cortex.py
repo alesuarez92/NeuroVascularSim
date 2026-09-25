@@ -124,7 +124,7 @@ class MouseColumnParams:
     adapt_conduction_length_um: float = 17300.0
     adapt_min_diameter_um: float = 2.5
     adapt_scope: str = "capillaries"
-    tissue_pressure_mmhg: float = 0.0
+    tissue_pressure_mmhg: float = 5.1  # mouse intracranial pressure (Feiler et al. 2010; see adaptation.py)
 
 
 def layer_of_depth(depth_um: np.ndarray) -> np.ndarray:
