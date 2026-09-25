@@ -40,6 +40,18 @@ export function statRows(s: NetworkStats): StatRow[] {
       target: { lo: 46, hi: 50, text: "46–50", source: "Blinder 2013, Ji 2021" },
     },
     {
+      label: "Capillary tortuosity, mean",
+      value: cap?.tortuosity_mean ?? null,
+      unit: "",
+      target: { lo: 1.22, hi: 1.32, text: "1.27 ± 0.05", source: "Ji 2021" },
+    },
+    {
+      label: "Tissue-to-vessel distance, mean",
+      value: s.tissue_distance?.mean_um ?? null,
+      unit: "µm",
+      target: { lo: 12.1, hi: 14.5, text: "13.3 ± 1.2", source: "Ji 2021 (vS1)" },
+    },
+    {
       label: "Capillary share of vascular volume",
       value: ratio(cap?.volume_fraction, st.vascular_volume_fraction),
       unit: "",
@@ -65,11 +77,18 @@ export function statRows(s: NetworkStats): StatRow[] {
     },
     {
       label: "Junctions of degree 3",
-      value: st.degree_fractions["3"] ?? 0,
+      value: junctionTriads(st.degree_fractions),
       unit: "",
-      target: { lo: 0.6, hi: 1.0, text: "predominant", source: "Blinder 2013" },
+      target: { lo: 0.9, hi: 0.96, text: "0.93", source: "Blinder 2013" },
     },
   ];
+}
+
+/** Share of branch points (degree 3 or more) that are triads. */
+function junctionTriads(fractions: Record<string, number>): number | null {
+  const junctions = Object.entries(fractions).filter(([d]) => Number(d) >= 3);
+  const total = junctions.reduce((acc, [, f]) => acc + f, 0);
+  return total > 0 ? (fractions["3"] ?? 0) / total : null;
 }
 
 export type Verdict = "in" | "near" | "out" | "none";

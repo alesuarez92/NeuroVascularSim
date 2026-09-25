@@ -66,6 +66,7 @@ export type ClassStats = {
   diameter_um: { n: number; median: number; mean: number; p10: number; p90: number };
   length_density_m_per_mm3: number | null;
   volume_fraction: number | null;
+  tortuosity_mean?: number | null;
 };
 
 export type NetworkStats = {
@@ -86,6 +87,7 @@ export type NetworkStats = {
     mean_order_nearest: number | null;
     median_arterial_to_venous_path: number | null;
   };
+  tissue_distance?: { mean_um: number; median_um: number; p99_um: number } | null;
 };
 
 export type DataFile = { name: string; size: number };

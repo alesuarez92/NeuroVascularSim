@@ -31,7 +31,7 @@ import numpy as np
 from .. import __version__, registry
 from ..experiment import ExperimentSpec, RunStore, run_experiment
 from ..vascular import io as vio
-from ..vascular.stats import capillary_branch_order, network_statistics
+from ..vascular.stats import capillary_branch_order, network_statistics, tissue_vessel_distance
 
 DEFAULT_RUN_DIR = os.environ.get("NVS_RUN_DIR", "runs")
 MAX_UPLOAD_BYTES = 512 * 2**20
@@ -115,7 +115,11 @@ def create_app(run_dir: str = DEFAULT_RUN_DIR, web_dir: str | None = DEFAULT_WEB
         # Undefined values (no volume, an empty vessel class) come out as null.
         with np.errstate(all="ignore"), warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
-            out = {"statistics": network_statistics(case.graph), "branch_order": capillary_branch_order(case.graph)}
+            out = {
+                "statistics": network_statistics(case.graph),
+                "branch_order": capillary_branch_order(case.graph),
+                "tissue_distance": tissue_vessel_distance(case.graph),
+            }
         return _finite(out)
 
     @app.get("/api/data-files")

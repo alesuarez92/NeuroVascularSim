@@ -126,3 +126,13 @@ def test_depth_selection_needs_depth():
     case = registry.create("network", "suarez2021a")
     with pytest.raises(ValueError):
         registry.create("perturbation", "scale_diameter", depth_range_um=[0, 100])(case)
+
+
+def test_tissue_to_vessel_distance_matches_ji_2021():
+    """Mean tissue-to-vessel distance 13.3 +/- 1.2 um at 0.88 m/mm^3 (Ji et al. 2021)."""
+    from neurovascularsim.vascular.stats import tissue_vessel_distance
+
+    g = registry.create("network", "mouse_cortex_synthetic", size_x_um=400, size_y_um=400, depth_um=800, seed=2).graph
+    d = tissue_vessel_distance(g, n_samples=5000)
+    assert 11.0 < d["mean_um"] < 16.0
+    assert tissue_vessel_distance(registry.create("network", "suarez2021a").graph) is None  # planar

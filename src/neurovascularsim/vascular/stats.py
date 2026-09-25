@@ -41,6 +41,8 @@ def network_statistics(graph: VascularGraph, volume_mm3: float | None = None) ->
     length_um = graph.length * 1e6
     diameter_um = graph.diameter * 1e6
     vessel_volume_mm3 = np.pi * (graph.diameter / 2) ** 2 * graph.length * 1e9
+    chord = np.linalg.norm(graph.positions[graph.edges[:, 0]] - graph.positions[graph.edges[:, 1]], axis=1)
+    tortuosity = graph.length / np.maximum(chord, 1e-12)
 
     out = {"volume_mm3": volume_mm3, "n_nodes": graph.n_nodes, "n_edges": graph.n_edges}
     for name, types in CLASSES.items():
@@ -50,6 +52,8 @@ def network_statistics(graph: VascularGraph, volume_mm3: float | None = None) ->
             "diameter_um": _summary(diameter_um[m]),
             "length_density_m_per_mm3": float(length_um[m].sum() * 1e-6 / volume_mm3),
             "volume_fraction": float(vessel_volume_mm3[m].sum() / volume_mm3),
+            # Path length over end-to-end distance (1 for straight vessels).
+            "tortuosity_mean": float(tortuosity[m & (chord > 0)].mean()) if (m & (chord > 0)).any() else None,
         }
     out["vascular_volume_fraction"] = float(vessel_volume_mm3.sum() / volume_mm3)
     deg = np.bincount(graph.edges.ravel(), minlength=graph.n_nodes)
@@ -107,4 +111,50 @@ def capillary_branch_order(graph: VascularGraph) -> dict:
         "mean_order_from_venous": float(order_v[fin(order_v)].mean()),
         "mean_order_nearest": float(nearest[fin(nearest)].mean()),
         "median_arterial_to_venous_path": float(np.median(a_to_v)) if a_to_v.size else float("nan"),
+    }
+
+
+def tissue_vessel_distance(graph: VascularGraph, n_samples: int = 20000, margin_um: float = 60.0,
+                           min_depth_um: float = 100.0, seed: int = 0) -> dict | None:
+    """Distance from tissue to the nearest vessel wall, in micrometres.
+
+    Random points are sampled inside the network's bounding box (``margin_um``
+    from its faces and, with depth, below ``min_depth_um``); points inside a
+    lumen are not tissue and are skipped. Compare with Ji et al. 2021: mean
+    13.3 +/- 1.2 um at 0.88 m/mm^3 in mouse vibrissa cortex. Returns None
+    for networks too thin to sample (e.g. planar test networks).
+    """
+    from scipy.spatial import cKDTree
+
+    pos = graph.positions / 1e-6
+    lo, hi = pos.min(axis=0) + margin_um, pos.max(axis=0) - margin_um
+    if graph.depth is not None:
+        # The depth axis is the coordinate that tracks depth; the pia is at its min or max.
+        depth = np.asarray(graph.depth)
+        corr = [abs(np.corrcoef(pos[:, i], depth)[0, 1]) if np.ptp(pos[:, i]) > 0 else 0 for i in range(3)]
+        axis = int(np.argmax(corr))
+        if np.corrcoef(pos[:, axis], depth)[0, 1] > 0:
+            lo[axis] = max(lo[axis], pos[:, axis].min() + min_depth_um)
+        else:
+            hi[axis] = min(hi[axis], pos[:, axis].max() - min_depth_um)
+    if np.any(hi - lo <= 0):
+        return None
+    a, b = pos[graph.edges[:, 0]], pos[graph.edges[:, 1]]
+    n = np.maximum(1, np.ceil(np.linalg.norm(b - a, axis=1))).astype(int)  # centreline samples ~1 um apart
+    edge = np.repeat(np.arange(graph.n_edges), n)
+    t = (np.arange(n.sum()) - np.repeat(np.cumsum(n) - n, n) + 0.5) / np.repeat(n, n)
+    points = a[edge] + (b[edge] - a[edge]) * t[:, None]
+    radius = graph.diameter[edge] / 2e-6
+    q = np.random.default_rng(seed).uniform(lo, hi, size=(n_samples, 3))
+    k = min(16, len(points))
+    dist, j = cKDTree(points).query(q, k=k)
+    dist, j = dist.reshape(len(q), k), j.reshape(len(q), k)
+    wall = np.min(dist - radius[j], axis=1)
+    wall = wall[wall > 0]
+    if wall.size == 0:
+        return None
+    return {
+        "mean_um": float(wall.mean()),
+        "median_um": float(np.median(wall)),
+        "p99_um": float(np.percentile(wall, 99)),
     }

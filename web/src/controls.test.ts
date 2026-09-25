@@ -90,7 +90,7 @@ describe("network statistics against measurements", () => {
         volume_fraction: 0.008,
       },
       vascular_volume_fraction: 0.01,
-      degree_fractions: { "3": 0.8 },
+      degree_fractions: { "1": 0.1, "2": 0.1, "3": 0.72, "4": 0.08 },
     },
     branch_order: { mean_order_from_arterial: 4, mean_order_from_venous: 4, mean_order_nearest: 3.5, median_arterial_to_venous_path: null },
   };
@@ -102,6 +102,8 @@ describe("network statistics against measurements", () => {
     expect(verdict(rows["Capillary segment length, median"])).toBe("out");
     expect(verdict(rows["Arteriole-to-venule path, median"])).toBe("none");
     expect(verdict(rows["Segments"])).toBe("none");
+    expect(rows["Junctions of degree 3"].value).toBeCloseTo(0.9); // among branch points only
+    expect(verdict(rows["Tissue-to-vessel distance, mean"])).toBe("none"); // not computed
   });
 });
 

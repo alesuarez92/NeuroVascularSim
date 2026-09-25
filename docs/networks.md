@@ -37,9 +37,11 @@ Built by `neurovascularsim/vascular/cortex.py`. The components:
 - **Depth and layer:** every node carries its depth below the pia and an
   approximate mouse S1 layer (L1, L2/3, L4, L5, L6).
 
-### Validation against measurements (default parameters, seeds 0–3)
+### Validation against measurements (default 600 × 600 × 1200 µm column, seeds 0–3)
 
-The papers are cited from PubMed: Blinder et al. 2013
+The papers are cited from PubMed: Adams et al. 2018
+[doi:10.1038/s41598-018-27910-3](https://doi.org/10.1038/s41598-018-27910-3),
+Blinder et al. 2013
 [doi:10.1038/nn.3426](https://doi.org/10.1038/nn.3426), Ji et al. 2021
 [doi:10.1016/j.neuron.2021.02.006](https://doi.org/10.1016/j.neuron.2021.02.006),
 Schmid et al. 2017
@@ -48,41 +50,63 @@ Smith et al. 2019
 [doi:10.3389/fphys.2019.00233](https://doi.org/10.3389/fphys.2019.00233) and
 Tsai et al. 2009
 [doi:10.1523/JNEUROSCI.3287-09.2009](https://doi.org/10.1523/JNEUROSCI.3287-09.2009).
+Model values are the mean over seeds, with the range in brackets.
+
+**Consistent with the measurements**
 
 | Quantity | Model | Measured | Source |
 |---|---|---|---|
-| Capillary length density | 0.88–0.95 m/mm³ | 0.88 ± 0.17 (vS1), 0.98 (somatosensory) | Ji 2021 |
-| Capillary diameter | median 4.0 µm | 4.0 ± 1.0 µm (network value) | Schmid 2017 |
-| Capillary segment length | median 33–36 µm | median 46–50 µm | Blinder 2013, Ji 2021 |
-| Junction degree | ~87% degree 3 | predominantly degree 3 | Blinder 2013 |
-| Capillary branch order (mean) | 3.4–3.8 | 3.4 ± 0.2 | Ji 2021 |
-| Arteriole-to-venule path (median) | 5–7 branches | ~7 | Ji 2021 |
-| Capillaries, share of vascular volume | ~0.55 | 0.8 ± 0.2 | Ji 2021 |
-| Capillaries, share of vascular length | ~0.82 | 0.959 | Ji 2021 |
-| Venules : arterioles | 3 : 1 | 3.0 ± 0.1 | Blinder 2013 |
-| Laminar capillary density | rises gently with depth (< 30%) | not tracking neuron density; shallow L4 peak | Tsai 2009, Blinder 2013 |
+| Capillary length density | 0.91 [0.88–0.95] m/mm³ | 0.88 ± 0.17 (vS1); 0.98 ± 0.02 (somatosensory) | Ji 2021 |
+| Capillary diameter | median 4.0 µm, SD 0.9 | 4.0 ± 1.0 µm; radii near 2 µm | Schmid 2017; Blinder 2013 |
+| Tissue-to-vessel distance (mean) | 14.0 [13.8–14.1] µm | 13.3 ± 1.2 µm at 0.88 m/mm³ | Ji 2021 |
+| Branch points that are triads | 0.92; 0.08 degree ≥ 4 | 0.93 triads, < 0.07 crosses | Blinder 2013 |
+| Capillary branch order (mean) | 3.56 [3.36–3.84] | 3.4 ± 0.2 | Ji 2021 |
+| Arteriole-to-venule path (median) | 6.3 [5–7] branches | ~7 | Ji 2021 |
+| Penetrating arteriole diameter at entry (median) | 11.2 µm | 11 µm | Blinder 2013 |
+| Ascending venule diameter at entry (median) | 9.0 µm | 9 µm | Blinder 2013 |
+| Venules : arterioles | 3 : 1 | above the rat estimates of 1.8 and 2.6 | Blinder 2013 |
+
+**Inconsistent: open gaps**
+
+| Quantity | Model | Measured | Source |
+|---|---|---|---|
+| Capillary segment length (median) | 33.5 µm | 50 µm | Blinder 2013 |
+| Capillary segment length (spread) | p5–p95 4–65 µm, max 100 µm | broad, 10–200 µm | Blinder 2013 |
+| Capillary tortuosity | 1.20 (a parameter) | 1.27 ± 0.05 | Ji 2021 |
+| Penetrating arterioles per mm² | 25 | 17.4 (fixed tissue, uncorrected for shrinkage) | Adams 2018 |
+| Capillary share of vascular length | 0.80 [0.79–0.81] | 0.959 | Ji 2021 |
+| Capillary share of vascular volume | 0.54 [0.53–0.56] | 0.8 ± 0.2 | Ji 2021 |
+| Capillary (microvascular) volume fraction | 1.2% | 0.74% (fixed tissue) | Tsai 2009, as cited by Blinder 2013 |
+| Laminar capillary density | rises steadily from L1 (~0.77) to L6 (~0.98 m/mm³) | shallow peak at L4 | Blinder 2013; Tsai 2009 |
 | Perfusion | 66–69 mL/100 g/min | roughly 100 | see Schmid 2017 |
 
-The app's **Network statistics** panel computes these quantities for any
-network, including reconstructed ones, and marks each against its measured
-range.
+The app's **Network statistics** panel computes most of these quantities for
+any network, including reconstructed ones, and marks each against its
+measured range.
 
-### Known gaps (open work, not hidden)
+### What the gaps point to
 
-- **Segment length:** about 30% shorter than measured at the correct length
-  density. Matching both would need tortuosity near 1.4, against the ~1.2
-  measured, so the capillary topology itself needs more work.
-- **Offshoots take capillary share:** relabelling capillary edges as
-  offshoot trees lowers the capillary share of vascular volume (~0.55
-  against 0.8) and of length (~0.82 against 0.96). Offshoot vessels are
-  probably too wide or too many.
-- **Perfusion** is about two thirds of the measured value. Rheology was not
-  tuned to close the gap, and neither were the pressures.
-- **Capillary hematocrit:** a few low-flow capillaries reach extreme values
-  (near 0 or above 0.7), from phase separation at very low flows.
-- **Solve time:** with phase separation, a 600 × 600 × 1200 µm column takes
-  ~25–35 s. The adaptive under-relaxation converges to a 0.1% flow change.
-- **Layer boundaries** are approximate for mouse S1.
+- **Capillaries too short and too uniform.** The capillary bed is a regular
+  foam, so segment lengths cluster (coefficient of variation 0.57) and none
+  exceed ~100 µm. Measured beds are broader, with a median of 50 µm.
+  Tortuosity is 1.2, but Ji et al. measured 1.27; raising it alone would
+  lengthen segments by ~6%.
+- **Too much non-capillary vessel.** One capillary edge in five is relabelled
+  as a precapillary arteriole or postcapillary venule (offshoot trees), and
+  the penetrating vessels are ~40% denser than Adams et al. counted. Both
+  lower the capillary shares of length and volume.
+- **Microvascular volume fraction:** the in-vivo diameter (4 µm) at the
+  measured length density gives 1.2% by arithmetic. The 0.74% figure comes
+  from fixed tissue, where vessels shrink, so this gap may be partly one of
+  method.
+- **Laminar profile:** the cause of the rise with depth is not yet known.
+  The `l4_density_boost` parameter (0.1) does not produce an L4 peak. A
+  foam density that depends on depth would give direct control.
+- **Other known issues:**
+  - A few low-flow capillaries reach extreme hematocrit, from phase
+    separation at very low flows.
+  - With phase separation, a solve takes ~25–35 s for the default column.
+  - Layer boundaries are approximate for mouse S1.
 
 ## Reconstructed networks (the Kleinfeld graphs)
 
