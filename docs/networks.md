@@ -186,11 +186,37 @@ Experiments (each changes one thing):
     slow share 42% → 35%, layer 1 : layer 5 flux 3.3 → 1.9;
   - with it, `pa_branches_per_trunk = 7` and 2 offshoot generations on both
     sides: spread 1.9, slow share 30%, flux ratio 1.9, branch order 3.36.
-- **Pending:** diameter adaptation (Pries et al. 1998; Pries et al. 2009,
-  *PLoS Comput Biol* 5:e1000394,
-  [doi:10.1371/journal.pcbi.1000394](https://doi.org/10.1371/journal.pcbi.1000394)),
-  as an optional step, once the exact equations can be read from the
-  papers.
+
+
+### Structural adaptation (optional, `structural_adaptation=True`)
+
+`vascular/adaptation.py` adapts diameters to equilibrium with the model of
+Alberding & Secomb 2021 (shear, transmural pressure, convected metabolic
+and conducted responses, shrinking tendency; parameters from the authors'
+code AngioAdapt20). Our choices: a uniform metabolic signal (0.1 per µm,
+calibrated to capillary diameter 4 ± 1 µm), no pruning, and by default
+only capillaries adapt (`adapt_scope`; precapillary arterioles are actively
+regulated, Hill 2015, and measure ~9 µm, Grant 2019). The transmural
+pressure uses a tissue pressure of 5.1 mmHg, the measured mouse
+intracranial pressure (Feiler 2010). Seeds 0–3, full column:
+
+| Quantity | Without | With adaptation | Measured / benchmark |
+|---|---|---|---|
+| Capillary diameter (median) | 4.0 µm | 4.1 µm | 4.0 ± 1.0 (Schmid 2017) |
+| Capillary branch order | 3.5 | 3.5 | 3.4 ± 0.2 (Ji 2021) |
+| Mean capillary speed | 0.49 mm/s | 0.65 mm/s | 0.71 (Li 2019) |
+| Spread of speeds (SD / mean) | 2.3 | 1.4 | 1.4–1.6 (Schmid 2017, simulated) |
+| Capillaries below 0.1 mm/s | 42% | 19% | few (Li 2019) |
+| Red-cell flux, layer 1 : layer 5 | 3.3 | 1.06 | ~1.1 (Li 2019) |
+| OEF | 0.15 | 0.24 | 0.35 (Sakadžić 2014) |
+| Share of extraction by arterioles | 0.19 | 0.13 | 0.50 (Sakadžić 2014) |
+| Hypoxic tissue (< 10 mmHg) | 41% | 7% | little |
+
+Adapting all microvessels (`adapt_scope="microvessels"`, no tissue
+pressure) gives OEF 0.35 and 4% hypoxic tissue, but shrinks the offshoots to
+capillary size (branch order 5.1, against 3.4 measured). The arteriolar
+share of extraction stays far below the measured 50% in every variant (see
+[oxygen.md](oxygen.md)).
 
 Sources:
 - Li B, …, Sakadžić S 2019, *eLife* 8:e42299,
@@ -203,6 +229,13 @@ Sources:
   [doi:10.1177/0271678X17732229](https://doi.org/10.1177/0271678X17732229).
 - Sugashi T, …, Masamoto K 2014, *Adv Exp Med Biol* 812:209,
   [doi:10.1007/978-1-4939-0620-8_28](https://doi.org/10.1007/978-1-4939-0620-8_28).
+- Alberding JP, Secomb TW 2021, *PLoS Comput Biol* 17:e1009164,
+  [doi:10.1371/journal.pcbi.1009164](https://doi.org/10.1371/journal.pcbi.1009164);
+  code: github.com/secomb/AngioAdapt20 (reimplemented, not copied).
+- Hill RA, …, Grutzendler J 2015, *Neuron* 87:95,
+  [doi:10.1016/j.neuron.2015.06.001](https://doi.org/10.1016/j.neuron.2015.06.001).
+- Feiler S, …, Plesnila N 2010, *J Neurosci Methods* 190:164,
+  [doi:10.1016/j.jneumeth.2010.05.005](https://doi.org/10.1016/j.jneumeth.2010.05.005).
 - Pries AR, Secomb TW, Gaehtgens P 1998, *Am J Physiol* 275:H349,
   [doi:10.1152/ajpheart.1998.275.2.H349](https://doi.org/10.1152/ajpheart.1998.275.2.H349).
 

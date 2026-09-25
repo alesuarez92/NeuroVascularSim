@@ -104,6 +104,12 @@ Other parts of the gap:
   This is the classical gap between measured and predicted arteriolar
   oxygen loss, and it is left open.
 
+**With structural adaptation** (`structural_adaptation=True`, capillaries
+only, tissue pressure 5.1 mmHg; seeds 0–3): OEF 0.24, arteriolar share of
+extraction 0.13 and 7% hypoxic tissue, with red-cell flux nearly equal in
+layers 1–5 (see [networks.md](networks.md), structural adaptation). Most of
+the OEF gap closes; the arteriolar share does not.
+
 These are properties of the synthetic network and the vessel wall model,
 not of the transport solver (which conserves oxygen and passes the limit
 tests). Running on a reconstructed network (the Kleinfeld graphs) is the
