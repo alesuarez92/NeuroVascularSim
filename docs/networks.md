@@ -173,6 +173,24 @@ Experiments (each changes one thing):
   0.8–1.0 mm; Schmid 2017). Network layout alone therefore does not explain
   the measured flat flux; adaptation of vessel diameters to local signals
   (Pries et al. 1998) is the next candidate.
+- **Tuning the unsourced settings does not close the gap.** A random search
+  over 70 combinations (connector, offshoot and terminal trunk diameters,
+  offshoot generations, branches per trunk, arteriole penetration depth;
+  seeds 0–1) found no case below ~26% slow capillaries or a spread below
+  ~1.5. For comparison, a log-normal speed distribution with the spread of
+  Schmid 2017 (1.6) has ~10% of capillaries below 0.1 mm/s (our estimate).
+  Two changes help and are kept as options (defaults unchanged, owner's
+  decision):
+  - no trunk taper (`trunk_terminal_diameter_um` ≥ the entry diameter;
+    Sugashi 2014 saw no diameter change over 50–400 µm): spread 2.3 → 2.1,
+    slow share 42% → 35%, layer 1 : layer 5 flux 3.3 → 1.9;
+  - with it, `pa_branches_per_trunk = 7` and 2 offshoot generations on both
+    sides: spread 1.9, slow share 30%, flux ratio 1.9, branch order 3.36.
+- **Pending:** diameter adaptation (Pries et al. 1998; Pries et al. 2009,
+  *PLoS Comput Biol* 5:e1000394,
+  [doi:10.1371/journal.pcbi.1000394](https://doi.org/10.1371/journal.pcbi.1000394)),
+  as an optional step, once the exact equations can be read from the
+  papers.
 
 Sources:
 - Li B, …, Sakadžić S 2019, *eLife* 8:e42299,
@@ -183,6 +201,8 @@ Sources:
   13:e1005392, [doi:10.1371/journal.pcbi.1005392](https://doi.org/10.1371/journal.pcbi.1005392).
 - Grant RI, Hartmann DA, …, Shih AY 2019, *J Cereb Blood Flow Metab* 39:411,
   [doi:10.1177/0271678X17732229](https://doi.org/10.1177/0271678X17732229).
+- Sugashi T, …, Masamoto K 2014, *Adv Exp Med Biol* 812:209,
+  [doi:10.1007/978-1-4939-0620-8_28](https://doi.org/10.1007/978-1-4939-0620-8_28).
 - Pries AR, Secomb TW, Gaehtgens P 1998, *Am J Physiol* 275:H349,
   [doi:10.1152/ajpheart.1998.275.2.H349](https://doi.org/10.1152/ajpheart.1998.275.2.H349).
 
