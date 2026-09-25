@@ -4,18 +4,21 @@
 // distinguishable. Identity is never colour-alone: the legend, tooltip and
 // edge table carry the same information.
 
-export type VesselClass = "arterial" | "capillary" | "venous";
+export type VesselClass = "arterial" | "capillary" | "venous" | "unclassified";
 
 export const CLASS_COLORS: Record<VesselClass, string> = {
   arterial: "#e34948",
   capillary: "#4a3aa7",
   venous: "#2a78d6",
+  // Neutral gray: vessels from real graphs whose arterial/venous identity is unknown.
+  unclassified: "#898781",
 };
 
 export const CLASS_LABELS: Record<VesselClass, string> = {
   arterial: "Arterial",
   capillary: "Capillary",
   venous: "Venous",
+  unclassified: "Unclassified",
 };
 
 const CLASS_OF: Record<string, VesselClass> = {
@@ -27,6 +30,7 @@ const CLASS_OF: Record<string, VesselClass> = {
   VENULE: "venous",
   ASCENDING_VENULE: "venous",
   PIAL_VEIN: "venous",
+  UNCLASSIFIED: "unclassified",
 };
 
 export function vesselClass(type: string): VesselClass {

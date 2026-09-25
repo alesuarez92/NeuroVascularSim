@@ -30,6 +30,11 @@ It is a sibling of
 (NeuroAnalyzer): the two share data conventions, so simulated data opens in
 NeuroAnalyzer and real recordings analysed there can drive or test the models.
 
+Networks: an idealised test tree, **synthetic mouse cortical columns**
+generated from published statistics (Blinder 2013, Ji 2021, Schmid 2017,
+Smith 2019), and **reconstructed graphs** such as the Kleinfeld-lab mouse
+networks, read from CSV. See [docs/networks.md](docs/networks.md).
+
 See [docs/VISION.md](docs/VISION.md) for the plan,
 [docs/architecture.md](docs/architecture.md) for how it is built,
 [docs/background.md](docs/background.md) for the owner's models and

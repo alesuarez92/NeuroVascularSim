@@ -96,7 +96,13 @@ export function NetworkView({ graph, colors, highlight, onHover }: Props) {
       s.mesh.geometry.dispose();
       (s.mesh.material as THREE.Material).dispose();
     }
-    const pos = graph.positions.map((p) => new THREE.Vector3(toUm(p[0]), toUm(p[1]), toUm(p[2])));
+    // Cortical networks (with depth) are shown with the pia on top: depth runs down the screen.
+    const cortical = graph.depth !== undefined;
+    const pos = graph.positions.map((p) =>
+      cortical
+        ? new THREE.Vector3(toUm(p[0]), -toUm(p[2]), toUm(p[1]))
+        : new THREE.Vector3(toUm(p[0]), toUm(p[1]), toUm(p[2])),
+    );
     const box = new THREE.Box3().setFromPoints(pos);
     const center = box.getCenter(new THREE.Vector3());
     const radius = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 1);
@@ -140,7 +146,13 @@ export function NetworkView({ graph, colors, highlight, onHover }: Props) {
     s.scene.add(mesh);
     s.mesh = mesh;
 
-    s.camera.position.set(0, -radius * 0.3, radius * 1.9);
+    // Fit the whole box in view, whatever its aspect ratio.
+    const size = box.getSize(new THREE.Vector3());
+    const tan = Math.tan(THREE.MathUtils.degToRad(s.camera.fov / 2));
+    const fitHeight = size.y / 2 / tan;
+    const fitWidth = Math.max(size.x, size.z) / 2 / (tan * s.camera.aspect);
+    const dist = Math.max(fitHeight, fitWidth) * 1.15 + size.z / 2;
+    s.camera.position.set(0, 0, dist);
     s.camera.near = radius / 100;
     s.camera.far = radius * 100;
     s.camera.updateProjectionMatrix();

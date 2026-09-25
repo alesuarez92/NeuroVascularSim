@@ -70,7 +70,7 @@ export default function App() {
 
   // A run is shown only on the network it was computed for.
   const shownRun = run && spec && network && sameNetwork(run.spec, spec) ? run : null;
-  const options = useMemo(() => colorByOptions(shownRun), [shownRun]);
+  const options = useMemo(() => colorByOptions(shownRun, network?.graph), [shownRun, network]);
   const activeColorBy = options.some((o) => colorByKey(o.value) === colorByKey(colorBy)) ? colorBy : { kind: "type" as const };
   const view = useMemo(
     () => (network ? computeView(network.graph, shownRun, activeColorBy) : null),
@@ -113,7 +113,7 @@ export default function App() {
   // Draw vessels at the diameters of the condition being shown.
   const g = useMemo(() => {
     if (!network) return undefined;
-    const label = activeColorBy.kind === "type" ? null : activeColorBy.label;
+    const label = "label" in activeColorBy ? activeColorBy.label : null;
     const d = label && shownRun?.results[label]?.diameter;
     return d ? { ...network.graph, diameter: d } : network.graph;
     // eslint-disable-next-line react-hooks/exhaustive-deps

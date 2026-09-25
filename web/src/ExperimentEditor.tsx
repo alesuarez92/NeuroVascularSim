@@ -9,7 +9,28 @@ type Props = {
   running: boolean;
 };
 
-const VESSEL_TYPES = ["ARTERIOLE", "PENETRATING_ARTERIOLE", "PRECAPILLARY_ARTERIOLE", "CAPILLARY", "VENULE"];
+const VESSEL_TYPES = [
+  "ARTERIOLE",
+  "PIAL_ARTERY",
+  "PENETRATING_ARTERIOLE",
+  "PRECAPILLARY_ARTERIOLE",
+  "CAPILLARY",
+  "VENULE",
+  "ASCENDING_VENULE",
+];
+
+/** A starting condition that makes sense for each kind of network. */
+function defaultConditions(network: string): Condition[] {
+  if (network === "suarez2021a") {
+    return [{ label: "dilate_active_30pct", perturbations: [{ name: "scale_diameter", params: { edges: ["active_edge"], factor: 1.3 } }] }];
+  }
+  return [
+    {
+      label: "dilate_arterioles_20pct",
+      perturbations: [{ name: "scale_diameter", params: { vessel_types: ["PENETRATING_ARTERIOLE"], factor: 1.2 } }],
+    },
+  ];
+}
 
 function parseTargets(text: string): (string | number)[] {
   return text
@@ -48,7 +69,11 @@ export function ExperimentEditor({ plugins, spec, onChange, onRun, running }: Pr
           value={spec.network.name}
           onChange={(e) => {
             const p = networks.find((n) => n.name === e.target.value);
-            set({ network: { name: e.target.value, params: { ...(p?.parameters ?? {}) } } });
+            set({
+              name: p?.name === "suarez2021a" ? "Arterial blood stealing" : `Experiment on ${e.target.value}`,
+              network: { name: e.target.value, params: { ...(p?.parameters ?? {}) } },
+              conditions: defaultConditions(e.target.value),
+            });
           }}
         >
           {networks.map((n) => (
@@ -94,7 +119,12 @@ export function ExperimentEditor({ plugins, spec, onChange, onRun, running }: Pr
         <legend>Conditions (compared with baseline)</legend>
         {spec.conditions.map((c, i) => {
           const p = c.perturbations[0] ?? { name: "scale_diameter", params: {} };
-          const params = p.params as { edges?: (string | number)[]; vessel_types?: string[]; factor?: number };
+          const params = p.params as {
+            edges?: (string | number)[];
+            vessel_types?: string[];
+            layers?: number[];
+            factor?: number;
+          };
           const update = (patch: Record<string, unknown>) =>
             setCondition(i, { ...c, perturbations: [{ name: "scale_diameter", params: { ...params, ...patch } }] });
           return (
@@ -131,6 +161,21 @@ export function ExperimentEditor({ plugins, spec, onChange, onRun, running }: Pr
                     <option key={t} value={t}>{t.toLowerCase().replace(/_/g, " ")}</option>
                   ))}
                 </select>
+              </label>
+              <label className="inline">
+                Layers
+                <input
+                  placeholder="e.g. 3 (L4), or 2, 3"
+                  value={(params.layers ?? []).join(", ")}
+                  onChange={(e) =>
+                    update({
+                      layers: e.target.value
+                        .split(",")
+                        .map((s) => Number(s.trim()))
+                        .filter((x) => Number.isInteger(x) && x > 0),
+                    })
+                  }
+                />
               </label>
               <label className="inline">
                 Diameter factor

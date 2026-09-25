@@ -24,6 +24,7 @@ class VesselType(IntEnum):
     ASCENDING_VENULE = 5
     PIAL_VEIN = 6
     ARTERIOLE = 7  # generic arteriole (idealised networks)
+    UNCLASSIFIED = 8  # larger vessel whose arterial/venous identity is unknown
 
 
 @dataclass

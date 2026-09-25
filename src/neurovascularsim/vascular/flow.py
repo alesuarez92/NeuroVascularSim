@@ -74,51 +74,68 @@ def solve_pressures(graph: VascularGraph, resistance: np.ndarray, pressure_bc: d
     return p, q
 
 
-def _update_hematocrit(graph, q, h_prev, inlet_h, pressure, phase_law):
-    """Propagate discharge hematocrit downstream through the current flow field."""
+def _update_hematocrit(graph, q, h_prev, inlet_h, phase_law, max_sweeps=None):
+    """Propagate discharge hematocrit downstream through a fixed flow field.
+
+    Red cells mix at convergences (flux-weighted) and split at bifurcations by
+    ``phase_law``; with more than two daughters they split in proportion to
+    flow. The update is vectorised: repeated sweeps over all nodes reach the
+    same fixed point as a node-by-node walk in flow order, because the flow
+    field has no cycles, and each sweep costs a few array operations.
+    """
     n = graph.n_nodes
     h = h_prev.copy()
-    a, b = graph.edges[:, 0], graph.edges[:, 1]
-    # Upstream and downstream node of every edge under the current flow.
-    up = np.where(q >= 0, a, b)
-    down = np.where(q >= 0, b, a)
     absq = np.abs(q)
-    flowing = absq > 0
+    fe = np.flatnonzero(absq > 0)
+    if fe.size == 0:
+        return h
+    a, b = graph.edges[:, 0], graph.edges[:, 1]
+    up = np.where(q >= 0, a, b)[fe]
+    down = np.where(q >= 0, b, a)[fe]
+    qf = absq[fe]
+    d = graph.diameter
 
-    inflow = [[] for _ in range(n)]
-    outflow = [[] for _ in range(n)]
-    for k in np.flatnonzero(flowing):
-        outflow[up[k]].append(k)
-        inflow[down[k]].append(k)
+    q_in = np.bincount(down, weights=qf, minlength=n)
+    q_out = np.bincount(up, weights=qf, minlength=n)
 
-    # Flow runs from high to low pressure, so descending pressure is a
-    # topological order of the flow network.
-    for node in np.argsort(-pressure, kind="stable"):
-        outs = outflow[node]
-        if not outs:
-            continue
-        ins = inflow[node]
-        if ins:
-            q_in = absq[ins].sum()
-            h_in = float((h[ins] * absq[ins]).sum() / q_in)
-            d_parent = graph.diameter[ins[int(np.argmax(absq[ins]))]]
-        else:  # a source node: blood enters the network here
-            q_in = absq[outs].sum()
-            h_in = float(inlet_h.get(int(node), inlet_h.get(-1)))
-            d_parent = graph.diameter[outs].max()
+    # Hematocrit of blood entering at source nodes (outflow, no inflow).
+    h_src = np.full(n, inlet_h[-1])
+    for node, value in inlet_h.items():
+        if node >= 0:
+            h_src[node] = value
 
-        if len(outs) == 1:
-            h[outs[0]] = h_in
-        elif len(outs) == 2:
-            ka, kb = outs
-            fqb = absq[ka] / (absq[ka] + absq[kb])
-            fqe = float(phase_law(fqb, graph.diameter[ka], graph.diameter[kb], d_parent, h_in))
-            rbc = h_in * q_in
-            h[ka] = min(fqe * rbc / absq[ka], MAX_HEMATOCRIT)
-            h[kb] = min((1.0 - fqe) * rbc / absq[kb], MAX_HEMATOCRIT)
-        else:
-            # More than two daughters: no empirical law; split in proportion to flow.
-            h[outs] = h_in
+    # Parent diameter at each node: the inflow edge carrying most flow, or
+    # the widest outflow edge at a source.
+    d_parent = np.zeros(n)
+    np.maximum.at(d_parent, up, d[fe])
+    by_node = np.lexsort((qf, down))
+    last = by_node[np.r_[np.diff(down[by_node]) != 0, True]]
+    d_parent[down[last]] = d[fe[last]]
+
+    # Bifurcations: nodes with exactly two outflow edges.
+    order = np.argsort(up, kind="stable")
+    n_out = np.bincount(up, minlength=n)
+    first = np.r_[0, np.cumsum(n_out)[:-1]]
+    two = np.flatnonzero(n_out == 2)
+    ka = fe[order[first[two]]]
+    kb = fe[order[first[two] + 1]]
+    fqb = absq[ka] / (absq[ka] + absq[kb])
+
+    for _ in range(max_sweeps or n + 1):
+        rbc_in = np.bincount(down, weights=h[fe] * qf, minlength=n)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            h_node = np.where(q_in > 0, rbc_in / q_in, h_src)
+        new = h.copy()
+        new[fe] = h_node[up]
+        if two.size:
+            fqe = np.asarray(phase_law(fqb, d[ka], d[kb], d_parent[two], h_node[two]), dtype=float)
+            rbc = h_node[two] * q_out[two]
+            new[ka] = np.minimum(fqe * rbc / absq[ka], MAX_HEMATOCRIT)
+            new[kb] = np.minimum((1.0 - fqe) * rbc / absq[kb], MAX_HEMATOCRIT)
+        done = np.max(np.abs(new - h)) < 1e-12
+        h = new
+        if done:
+            break
     return h
 
 
@@ -130,19 +147,29 @@ def solve_flow(
     viscosity: str = "pries_invivo",
     phase_separation: str = "pries",
     plasma_viscosity: float = PLASMA_VISCOSITY,
-    tol: float = 1e-8,
+    tol: float = 1e-3,
     max_iter: int = 500,
-    relaxation: float = 1.0,
+    relaxation: float = 0.5,
 ) -> FlowSolution:
     """Self-consistent steady flow and hematocrit on ``graph``.
+
+    Flow and hematocrit are iterated: flow for the current viscosities, then
+    hematocrit for that flow, under-relaxed. Networks with loops can oscillate
+    (red-cell partitioning feeds back on flow), so the relaxation factor is
+    reduced whenever the flow change grows. In large looped networks a few
+    low-flow capillaries can keep switching direction (red-cell partitioning
+    admits several equilibria), so the default tolerance is a 0.1% flow
+    change; check ``converged`` and ``iterations`` on the result.
 
     Args:
         pressure_bc: fixed pressures {node index: Pa}.
         inlet_hematocrit: discharge hematocrit of blood entering the network,
             one value or per source node.
         viscosity, phase_separation: plugin names (see :mod:`registry`).
-        tol: convergence threshold on the largest hematocrit change.
-        relaxation: under-relaxation factor for the hematocrit update (0–1].
+        tol: convergence threshold on the largest relative change in flow
+            between iterations, over edges carrying at least 1e-3 of the
+            largest flow.
+        relaxation: initial under-relaxation factor for hematocrit (0–1].
     """
     visc_law = registry.create("viscosity", viscosity)
     phase_law = registry.create("phase_separation", phase_separation)
@@ -153,19 +180,28 @@ def solve_flow(
         inlet_h = {-1: float(inlet_hematocrit)}
 
     h = np.full(graph.n_edges, inlet_h[-1])
+    omega = relaxation
+    q_prev = None
+    last_change = np.inf
     converged = False
     for it in range(1, max_iter + 1):
         eta = visc_law(graph.diameter, h)
         r = poiseuille_resistance(graph.diameter, graph.length, eta, plasma_viscosity)
         p, q = solve_pressures(graph, r, pressure_bc)
-        h_new = _update_hematocrit(graph, q, h, inlet_h, p, phase_law)
-        change = np.max(np.abs(h_new - h)) if h.size else 0.0
-        h = h + relaxation * (h_new - h)
-        if change < tol:
-            converged = True
-            break
+        if q_prev is not None:
+            big = np.abs(q) >= 1e-3 * np.abs(q).max()
+            change = float(np.max(np.abs(q - q_prev)[big] / np.abs(q)[big])) if big.any() else 0.0
+            if change < tol:
+                converged = True
+                break
+            if change > last_change:
+                omega = max(0.7 * omega, 0.02)
+            last_change = change
+        h = h + omega * (_update_hematocrit(graph, q, h, inlet_h, phase_law) - h)
+        q_prev = q
 
-    eta = visc_law(graph.diameter, h)
-    r = poiseuille_resistance(graph.diameter, graph.length, eta, plasma_viscosity)
-    p, q = solve_pressures(graph, r, pressure_bc)
+    # Report the exact red-cell split for the final flow, so red cells are
+    # conserved at every node; it differs from the hematocrit used for the
+    # final viscosities by less than the convergence tolerance.
+    h = _update_hematocrit(graph, q, h, inlet_h, phase_law)
     return FlowSolution(p, q, h, eta, r, it, converged)

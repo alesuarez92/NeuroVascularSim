@@ -17,6 +17,8 @@ export type Graph = {
   diameter: number[]; // m
   length: number[]; // m
   vessel_type: string[];
+  depth?: number[]; // m, per node
+  layer?: number[]; // 1-based layer index per node, 0 if unknown
   meta: Record<string, unknown>;
 };
 
