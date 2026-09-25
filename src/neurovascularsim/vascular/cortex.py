@@ -3,14 +3,17 @@ statistics.
 
 The column has four parts, built in this order:
 
-1. **Capillary bed**: the edges of a 3D Voronoi tessellation (a space-filling
-   foam of mostly degree-3 junctions), following the constrained-Voronoi idea
-   of Smith et al. 2019 (Front Physiol 10:233). Seed spacing is calibrated so
-   the capillary length density matches measurements in mouse somatosensory
-   cortex (0.88–0.98 m/mm^3; Ji et al. 2021, Neuron 109:1168). Diameters are
-   drawn from a truncated normal of 4.0 ± 1.0 um on [2.5, 9] um (Schmid et
-   al. 2017, PLoS Comput Biol 13:e1005392), and lengths include ~20%
-   tortuosity (Smith et al. 2019).
+1. **Capillary bed**: evenly spaced junctions (blue noise) joined to their
+   nearest neighbours up to three vessels each, so most junctions have
+   degree 3 and the junction spacing sets the segment length. The spacing is
+   calibrated so the capillary length density (vessels at most 7 um wide, as
+   counted by Ji et al. 2021, Neuron 109:1168) matches mouse somatosensory
+   cortex (0.88 m/mm^3); the median segment is then ~60 um (Blinder et al.
+   2013: 50 um). Diameters are drawn from a truncated normal of 4.0 ± 1.0 um
+   on [2.5, 9] um (Schmid et al. 2017, PLoS Comput Biol 13:e1005392), and
+   lengths are 1.27 times the straight distance (Ji et al. 2021). The earlier
+   Voronoi foam (Smith et al. 2019) remains available as
+   ``capillary_bed="foam"``; its segments are too short (~35 um).
 2. **Penetrating arterioles and ascending venules**: vertical trunks placed
    on the surface with a minimum spacing, ~3 venules per arteriole and median
    surface diameters of 11 and 9 um (Blinder et al. 2013, Nat Neurosci
@@ -26,18 +29,16 @@ The column has four parts, built in this order:
 
 Simplifications, stated plainly: the capillary bed does not exchange flow
 across the lateral faces of the column (closed box); trunks are straight
-with small jitter; layer boundaries are approximate for mouse S1; the
-density of penetrating vessels per mm^2 is a parameter (default read from
-the networks in Schmid et al. 2017, Table 2) and should be checked against
-the owner's data. Every number here is a parameter.
+with small jitter; layer boundaries are approximate for mouse S1. Every
+number here is a parameter.
 
-Calibration: the density of penetrating vessels, their connection spacing
-and the offshoot generations were chosen on a grid to match the capillary
-topology measured by Ji et al. 2021 (mean capillary branch order 3.4 from
-the nearest non-capillary vessel; ~7 capillary branches between arterioles
-and venules), giving ~3.7 and ~6.5. Perfusion was not a calibration target
-because it also depends on rheology; it comes out at about half the
-measured mouse value (see docs/networks.md).
+Calibration: penetrating arteriole density is the measured 17.4 per mm^2
+(Adams et al. 2018); the spacing of their connections to the bed was chosen
+to match the capillary topology measured by Ji et al. 2021 (mean branch
+order 3.4 from the nearest non-capillary vessel). Perfusion was not a
+calibration target: with these fixed-tissue diameters and the in-vivo
+viscosity law it comes out well below the measured value (see
+docs/networks.md for the diagnosis).
 """
 
 from __future__ import annotations
@@ -47,7 +48,7 @@ from dataclasses import asdict, dataclass
 import numpy as np
 from scipy.sparse import coo_matrix
 from scipy.sparse.csgraph import connected_components, minimum_spanning_tree
-from scipy.spatial import Voronoi, cKDTree
+from scipy.spatial import Delaunay, Voronoi, cKDTree
 
 from .. import registry
 from ..units import MMHG, UM
@@ -69,9 +70,15 @@ class MouseColumnParams:
     capillary_length_density: float = 0.9  # m/mm^3 (Ji et al. 2021)
     capillary_diameter_mean_um: float = 4.0  # Schmid et al. 2017
     capillary_diameter_sd_um: float = 1.0
-    tortuosity: float = 1.2  # Smith et al. 2019
+    # Capillary bed: "nearest_neighbour" (evenly spaced junctions, each joined
+    # to its nearest neighbours up to degree 3) or "foam" (Voronoi edges; the
+    # earlier model, whose segments are too short; see docs/networks.md).
+    capillary_bed: str = "nearest_neighbour"
+    capillary_min_distance_fraction: float = 0.9  # junction exclusion radius / mean spacing
+    capillary_edge_noise: float = 0.3  # randomness in which neighbours are joined (log-normal SD)
+    tortuosity: float = 1.27  # branch path length / end-to-end distance (Ji et al. 2021)
     l4_density_boost: float = 0.1  # shallow L4 peak (Blinder et al. 2013)
-    pa_density_per_mm2: float = 24.0  # calibrated to capillary topology (Ji et al. 2021); see docs
+    pa_density_per_mm2: float = 17.4  # mouse sensory cortex (Adams et al. 2018)
     av_to_pa_ratio: float = 3.0  # Blinder et al. 2013 (mouse)
     pa_diameter_median_um: float = 11.0  # Blinder et al. 2013
     av_diameter_median_um: float = 9.0  # Blinder et al. 2013
@@ -86,7 +93,7 @@ class MouseColumnParams:
     venular_offshoot_generations: int = 1
     arteriolar_offshoot_diameters_um: tuple = (7.0, 6.0, 5.0, 4.5)
     venular_offshoot_diameters_um: tuple = (8.0, 7.0, 6.0, 5.0)
-    branch_spacing_um: float = 40.0
+    branch_spacing_um: float = 60.0  # calibrated to capillary branch order (Ji et al. 2021)
     connections_per_level: int = 1
     pa_min_depth_fraction: float = 0.3
     p_in_mmhg: float = 60.0
@@ -152,6 +159,70 @@ def _voronoi_foam(p: MouseColumnParams, cell_um: float, rng: np.random.Generator
     pos = vor.vertices[used]
     edges = remap[edges]
     return _split_high_degree(pos, _remove_matching(len(pos), edges, rng))
+
+
+def _blue_noise(n_points: int, r_min: float, lo: np.ndarray, hi: np.ndarray, rng: np.random.Generator,
+                warp=None) -> np.ndarray:
+    """``n_points`` random points at least ``r_min`` apart (a maximal
+    independent set of a dense random cloud by Luby's algorithm, then a
+    random subset). ``warp`` maps a uniform depth coordinate to depth."""
+    n_try = int(8 * np.prod(hi - lo) / r_min**3) + n_points
+    cand = rng.uniform(lo, hi, (n_try, 3))
+    if warp is not None:
+        cand[:, 2] = warp(cand[:, 2])
+    pairs = cKDTree(cand).query_pairs(r_min, output_type="ndarray")
+    a, b = pairs[:, 0], pairs[:, 1]
+    alive = np.ones(n_try, dtype=bool)
+    chosen = np.zeros(n_try, dtype=bool)
+    while alive.any():
+        priority = rng.uniform(size=n_try)
+        priority[~alive] = np.inf
+        live = alive[a] & alive[b]
+        lowest = priority.copy()
+        np.minimum.at(lowest, a[live], priority[b[live]])
+        np.minimum.at(lowest, b[live], priority[a[live]])
+        selected = alive & (priority <= lowest)
+        chosen |= selected
+        removed = selected.copy()
+        removed[b[selected[a]]] = True
+        removed[a[selected[b]]] = True
+        alive &= ~removed
+    pts = cand[chosen]
+    if len(pts) > n_points:
+        pts = pts[rng.choice(len(pts), n_points, replace=False)]
+    return pts
+
+
+def _nearest_neighbour_bed(p: MouseColumnParams, spacing_um: float, rng: np.random.Generator):
+    """Capillary skeleton: evenly spaced junctions joined to near neighbours.
+
+    Junctions are blue noise (at least ``capillary_min_distance_fraction`` x
+    spacing apart) at mean spacing ``spacing_um``. Delaunay neighbours are
+    joined shortest first (with log-normal noise) while both ends have fewer
+    than three vessels: a mostly degree-3 network whose junction spacing,
+    not an intermediate tessellation, sets the segment length. This matches
+    measured beds (median segment ~50 um at 0.9 m/mm^3; Blinder et al. 2013,
+    Ji et al. 2021), which a Voronoi foam cannot (its edges are too short).
+    """
+    lo = np.array([0.0, 0.0, 5.0])
+    hi = np.array([p.size_x_um, p.size_y_um, p.depth_um])
+    n_points = max(8, int(round(np.prod(hi - lo) / spacing_um**3)))
+    pos = _blue_noise(n_points, p.capillary_min_distance_fraction * spacing_um, lo, hi, rng, _depth_warp(p))
+    simplices = Delaunay(pos).simplices
+    cand = np.vstack([simplices[:, [i, j]] for i in range(4) for j in range(i + 1, 4)])
+    cand = np.unique(np.sort(cand, axis=1), axis=0)
+    length = np.linalg.norm(pos[cand[:, 0]] - pos[cand[:, 1]], axis=1)
+    ok = length <= 2.5 * spacing_um  # no long edges across the convex hull
+    cand, length = cand[ok], length[ok]
+    deg = np.zeros(len(pos), dtype=np.int64)
+    keep = []
+    for k in np.argsort(length * np.exp(rng.normal(0.0, p.capillary_edge_noise, len(length)))):
+        a, b = cand[k]
+        if deg[a] < 3 and deg[b] < 3:
+            keep.append(k)
+            deg[a] += 1
+            deg[b] += 1
+    return pos, cand[np.sort(keep)]
 
 
 def _remove_matching(n_nodes: int, edges: np.ndarray, rng: np.random.Generator) -> np.ndarray:
@@ -288,16 +359,17 @@ def _grow_offshoots(cedges, cdiam, ctype, n_cap_nodes, trees) -> None:
 def build_mouse_column(p: MouseColumnParams) -> NetworkCase:
     """Build a column whose final capillary length density matches the target.
 
-    Offshoot trees turn some capillaries into arterioles and venules, so the
-    foam is first built to the target and then rebuilt denser by the measured
-    shortfall (usually one extra pass).
+    Capillaries are counted as Ji et al. 2021 measured them: every vessel at
+    most 7 um wide (so thin connectors and offshoots count, wide offshoots
+    do not). The bed is first built to the target and then rebuilt by the
+    measured difference (usually one extra pass).
     """
     target = p.capillary_length_density
     foam_density = target
     case = None
     for _ in range(4):
         case = _build_mouse_column(p, foam_density)
-        cap = case.graph.vessel_type == VesselType.CAPILLARY
+        cap = case.graph.diameter <= 7.0 * UM * (1 + 1e-9)
         achieved = case.graph.length[cap].sum() * 1e3 / (case.graph.meta["volume_mm3"] * 1e3)
         if abs(achieved / target - 1) < 0.03:
             break
@@ -311,9 +383,14 @@ def _build_mouse_column(p: MouseColumnParams, foam_length_density: float) -> Net
 
     # 1. Capillary bed, calibrated to the target length density. Length
     # density of the foam scales as 1/cell^2.
-    spacing = 100.0
-    for _ in range(4):
-        cpos, cedges = _voronoi_foam(p, spacing, np.random.default_rng(p.seed))
+    if p.capillary_bed == "nearest_neighbour":
+        make_bed, spacing = _nearest_neighbour_bed, 40.0
+    elif p.capillary_bed == "foam":
+        make_bed, spacing = _voronoi_foam, 100.0
+    else:
+        raise ValueError(f"unknown capillary_bed {p.capillary_bed!r}; use 'nearest_neighbour' or 'foam'")
+    for _ in range(6):
+        cpos, cedges = make_bed(p, spacing, np.random.default_rng(p.seed))
         seg = np.linalg.norm(cpos[cedges[:, 0]] - cpos[cedges[:, 1]], axis=1) * p.tortuosity
         density = seg.sum() * 1e-6 / volume_mm3  # m/mm^3
         if abs(density / foam_length_density - 1) < 0.03:
@@ -327,6 +404,7 @@ def _build_mouse_column(p: MouseColumnParams, foam_length_density: float) -> Net
     vtype = [np.full(len(cedges), VesselType.CAPILLARY)]
     n_nodes = len(cpos)
     tree = cKDTree(cpos)
+    cap_degree = np.bincount(cedges.ravel(), minlength=len(cpos))
     used_capillary_nodes: set[int] = set()
 
     def add_nodes(xyz):
@@ -373,7 +451,10 @@ def _build_mouse_column(p: MouseColumnParams, foam_length_density: float) -> Net
             for k, node in enumerate(nodes[1:], start=1):
                 picks = p.connections_per_level + (1 if k == len(nodes) - 1 else 0)
                 _, cand = tree.query(allpos[node], k=12)
-                chosen = [c for c in np.atleast_1d(cand) if c not in used_capillary_nodes][:picks]
+                # Nearest free capillary junctions, those with a spare slot
+                # first, so connections do not create degree-4 junctions.
+                free = [int(c) for c in np.atleast_1d(cand) if c not in used_capillary_nodes]
+                chosen = sorted(free, key=lambda c: cap_degree[c] >= 3)[:picks]
                 for c in chosen:
                     used_capillary_nodes.add(int(c))
                     seeds[connector_type].append(int(c))
@@ -480,8 +561,8 @@ _DEFAULTS = asdict(MouseColumnParams())
     "network",
     "mouse_cortex_synthetic",
     description=(
-        "Synthetic mouse cortical column: Voronoi capillary bed calibrated to measured length "
-        "density, penetrating arterioles and ascending venules (1:3), pial arterial and venous "
+        "Synthetic mouse cortical column: capillary bed of evenly spaced degree-3 junctions calibrated "
+        "to measured length density and segment length, penetrating arterioles and ascending venules (1:3), pial arterial and venous "
         "trees (Murray's law); depth and cortical layer on every node."
     ),
     reference=(
@@ -489,13 +570,13 @@ _DEFAULTS = asdict(MouseColumnParams())
         "2017 PLoS Comput Biol; Smith et al. 2019 Front Physiol"
     ),
     parameters={k: _DEFAULTS[k] for k in (
-        "size_x_um", "size_y_um", "depth_um", "seed", "boundary", "pa_density_per_mm2", "av_to_pa_ratio",
+        "size_x_um", "size_y_um", "depth_um", "seed", "boundary", "capillary_bed", "pa_density_per_mm2", "av_to_pa_ratio",
         "pa_diameter_median_um", "av_diameter_median_um", "branch_spacing_um", "connections_per_level",
         "arteriolar_offshoot_generations", "venular_offshoot_generations",
         "capillary_length_density", "capillary_diameter_mean_um", "capillary_diameter_sd_um", "tortuosity",
         "l4_density_boost", "p_in_mmhg", "p_out_mmhg", "hematocrit",
     )},
-    choices={"boundary": ["penetrating_tops", "pial_tree"]},
+    choices={"boundary": ["penetrating_tops", "pial_tree"], "capillary_bed": ["nearest_neighbour", "foam"]},
 )
 def mouse_cortex_synthetic(**params) -> NetworkCase:
     unknown = set(params) - set(_DEFAULTS)

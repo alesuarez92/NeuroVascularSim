@@ -1,19 +1,17 @@
 """The synthetic mouse column against published measurements.
 
-Targets: capillary length density 0.88–0.98 m/mm^3 (Ji et al. 2021),
-capillary diameter 4.0 ± 1.0 um (Schmid et al. 2017), venules outnumbering
-arterioles ~3:1 (Blinder et al. 2013), mostly degree-3 junctions (Blinder et
-al. 2013), capillaries ~0.8 of vascular volume (Ji et al. 2021), and no
-strong laminar variation of capillary density (Tsai et al. 2009).
+Counted as the papers count: per branch (vessel between branch points), with
+capillaries the vessels at most 7 um wide (Ji et al. 2021). Targets:
+capillary length density 0.88 ± 0.17 m/mm^3 and tortuosity 1.27 (Ji et al.
+2021), capillary diameter 4.0 ± 1.0 um (Schmid et al. 2017), median
+capillary segment ~50 um and triads 0.93 of branch points (Blinder et al.
+2013), venules outnumbering arterioles ~3:1 (Blinder et al. 2013),
+capillaries 0.8 ± 0.2 of vascular volume and mean branch order 3.4 (Ji et
+al. 2021), no strong laminar variation (Tsai et al. 2009).
 
-The defaults are calibrated to capillary topology (Ji et al. 2021: mean
-capillary branch order 3.4 from the nearest non-capillary vessel, ~7
-branches between arterioles and venules).
-
-Known gaps, asserted loosely and documented in docs/networks.md: median
-capillary segment length ~34 um against 46–50 um measured; capillaries hold
-~0.55 of vascular volume against 0.8 measured; capillary density rises
-gently with depth (~15%).
+Known gaps, asserted loosely and documented in docs/networks.md: segments
+~60 um (a little long), arteriole-to-venule path ~9 branches (~7 measured),
+and perfusion (not tested here) well below the measured value.
 """
 
 import numpy as np
@@ -22,7 +20,7 @@ import pytest
 from neurovascularsim import registry
 from neurovascularsim.vascular import solve_flow
 from neurovascularsim.vascular.graph import VesselType
-from neurovascularsim.vascular.stats import capillary_branch_order, network_statistics
+from neurovascularsim.vascular.stats import capillary_branch_order, contract_branches, network_statistics
 
 
 @pytest.fixture(scope="module")
@@ -36,27 +34,53 @@ def small():
                            pa_density_per_mm2=20, seed=1)
 
 
-def test_capillary_bed_matches_measurements(column):
-    s = network_statistics(column.graph)
+@pytest.fixture(scope="module")
+def branches(column):
+    return contract_branches(column.graph)
+
+
+def test_capillary_bed_matches_measurements(column, branches):
+    s = network_statistics(branches)
     cap = s["capillary"]
     assert 0.85 <= cap["length_density_m_per_mm3"] <= 0.95
     assert 3.7 <= cap["diameter_um"]["median"] <= 4.3
-    assert 25 <= cap["length_um"]["median"] <= 60  # measured 46–50 (known gap)
-    cap_volume_share = cap["volume_fraction"] / s["vascular_volume_fraction"]
-    assert 0.45 <= cap_volume_share <= 0.9  # measured 0.8 (known gap)
-    assert s["degree_fractions"][3] > 0.7
+    assert 45 <= cap["length_um"]["median"] <= 70  # measured 50
+    assert 1.2 <= cap["tortuosity_mean"] <= 1.35  # measured 1.27 ± 0.05
+    assert 0.6 <= cap["volume_fraction"] / s["vascular_volume_fraction"] <= 1.0  # measured 0.8 ± 0.2
+    n_with_degree = np.bincount(np.bincount(column.graph.edges.ravel()))
+    assert n_with_degree[3] / n_with_degree[3:].sum() > 0.9  # triads among branch points (0.93 measured)
 
 
-def test_capillary_topology_matches_ji_2021(column):
-    bo = capillary_branch_order(column.graph)
-    assert 2.8 <= bo["mean_order_nearest"] <= 4.2
-    assert 4 <= bo["median_arterial_to_venous_path"] <= 9
+def test_capillary_topology_matches_ji_2021(branches):
+    bo = capillary_branch_order(branches)
+    assert 2.9 <= bo["mean_order_nearest"] <= 3.9
+    assert 5 <= bo["median_arterial_to_venous_path"] <= 11
 
 
-def test_capillary_density_varies_little_across_layers(column):
-    per_layer = network_statistics(column.graph)["capillary_length_density_by_layer"]
-    deep = [per_layer[k] for k in ("L2/3", "L4", "L5", "L6")]
-    assert max(deep) / min(deep) < 1.3
+def test_capillary_density_varies_little_across_layers(branches):
+    by_layer = network_statistics(branches)["capillary_length_density_by_layer"]
+    assert max(by_layer.values()) / min(by_layer.values()) < 1.25
+
+
+def test_branch_contraction_keeps_length_and_merges_chains():
+    from neurovascularsim.vascular.graph import VascularGraph
+
+    # A path 0-1-2 (1 has degree 2) plus a branch point 2 -> 3, 4.
+    g = VascularGraph(
+        positions=np.array([[0, 0, 0], [10, 5, 0], [20, 0, 0], [30, 0, 0], [20, 10, 0]]) * 1e-6,
+        edges=np.array([[0, 1], [1, 2], [2, 3], [2, 4]]),
+        diameter=np.array([4, 6, 8, 5]) * 1e-6,
+        length=np.array([12, 12, 10, 10]) * 1e-6,
+        vessel_type=np.array([VesselType.CAPILLARY] * 2 + [VesselType.VENULE] * 2),
+    )
+    b = contract_branches(g)
+    assert b.n_edges == 3
+    assert b.length.sum() == pytest.approx(g.length.sum())
+    merged = np.argmax(b.length)
+    assert b.length[merged] == pytest.approx(24e-6) and b.diameter[merged] == pytest.approx(5e-6)
+    assert b.vessel_type[merged] == VesselType.CAPILLARY
+    # Ji's definition: at most 7 um wide is capillary, whatever the label.
+    assert sorted(b.vessel_type.tolist()) == sorted([VesselType.CAPILLARY, VesselType.VENULE, VesselType.CAPILLARY])
 
 
 def test_penetrating_vessels_and_boundaries(column):

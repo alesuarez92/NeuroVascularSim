@@ -158,3 +158,68 @@ def tissue_vessel_distance(graph: VascularGraph, n_samples: int = 20000, margin_
         "median_um": float(np.median(wall)),
         "p99_um": float(np.percentile(wall, 99)),
     }
+
+
+#: Ji et al. 2021 call a vessel a capillary when its radius is at most 3.5 um.
+JI_CAPILLARY_MAX_DIAMETER_UM = 7.0
+
+
+def contract_branches(graph: VascularGraph, capillary_max_diameter_um: float | None = JI_CAPILLARY_MAX_DIAMETER_UM
+                      ) -> VascularGraph:
+    """The branch graph: chains of edges through degree-2 nodes merged into one edge.
+
+    Morphometric papers measure *branches* (vessel between two branch points
+    or ends), not the pieces a reconstruction or a generator happens to use.
+    Each branch keeps its path length (so length / end-to-end distance is its
+    tortuosity), its length-weighted mean diameter, and its majority type;
+    with ``capillary_max_diameter_um``, branches at most that wide are typed
+    capillary regardless of their label (the Ji et al. 2021 definition).
+    Closed loops (without a branch point, or back to the same one) are dropped.
+    """
+    from scipy.sparse import coo_matrix
+    from scipy.sparse.csgraph import connected_components
+
+    n, m = graph.n_nodes, graph.n_edges
+    deg = np.bincount(graph.edges.ravel(), minlength=n)
+    # Edges sharing a degree-2 node belong to the same branch.
+    inner = np.flatnonzero(deg == 2)
+    ends = np.concatenate([graph.edges[:, 0], graph.edges[:, 1]])
+    edge_of_end = np.concatenate([np.arange(m), np.arange(m)])
+    order = np.argsort(ends, kind="stable")
+    ends_sorted, edges_sorted = ends[order], edge_of_end[order]
+    first = np.searchsorted(ends_sorted, inner)
+    pairs = np.stack([edges_sorted[first], edges_sorted[first + 1]], axis=1)
+    adj = coo_matrix((np.ones(len(pairs)), (pairs[:, 0], pairs[:, 1])), shape=(m, m))
+    n_branch, branch_of = connected_components(adj, directed=False)
+
+    length = np.bincount(branch_of, weights=graph.length, minlength=n_branch)
+    diameter = np.bincount(branch_of, weights=graph.diameter * graph.length, minlength=n_branch) / length
+    # Branch ends: nodes that are not degree 2, one at each end of the chain.
+    is_end = deg[graph.edges] != 2  # (m, 2)
+    ends_per_branch = [[] for _ in range(n_branch)]
+    for k, side in zip(*np.nonzero(is_end)):
+        ends_per_branch[branch_of[k]].append(graph.edges[k, side])
+    # Majority type by length.
+    types = np.unique(graph.vessel_type)
+    weight = np.zeros((n_branch, len(types)))
+    for i, t in enumerate(types):
+        weight[:, i] = np.bincount(branch_of, weights=graph.length * (graph.vessel_type == t), minlength=n_branch)
+    vtype = types[np.argmax(weight, axis=1)]
+    if capillary_max_diameter_um is not None:
+        vtype = np.where(diameter <= capillary_max_diameter_um * 1e-6 * (1 + 1e-9), VesselType.CAPILLARY, vtype)
+
+    keep = np.array([len(e) == 2 and e[0] != e[1] for e in ends_per_branch])
+    bedges = np.array([e for e, k in zip(ends_per_branch, keep) if k], dtype=np.int64).reshape(-1, 2)
+    used = np.unique(bedges)
+    remap = -np.ones(n, dtype=np.int64)
+    remap[used] = np.arange(len(used))
+    return VascularGraph(
+        positions=graph.positions[used],
+        edges=remap[bedges],
+        diameter=diameter[keep],
+        length=length[keep],
+        vessel_type=vtype[keep].astype(graph.vessel_type.dtype),
+        depth=None if graph.depth is None else np.asarray(graph.depth)[used],
+        layer=None if graph.layer is None else np.asarray(graph.layer)[used],
+        meta=dict(graph.meta),
+    )

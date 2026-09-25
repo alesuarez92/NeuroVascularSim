@@ -61,7 +61,12 @@ export function StatsPanel({ network }: { network: Component }) {
           </tbody>
         </table>
       )}
-      {rows && <p className="hint">Sources: hover a measured value; details in docs/networks.md.</p>}
+      {rows && (
+        <p className="hint">
+          Counted as the papers count: per branch (between branch points), with capillaries the vessels at most
+          7 µm wide (Ji et al. 2021). Sources: hover a measured value; details in docs/networks.md.
+        </p>
+      )}
     </div>
   );
 }

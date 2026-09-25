@@ -33,7 +33,13 @@ from .. import __version__, registry
 from ..experiment import ExperimentSpec, RunStore, run_experiment
 from ..jobs import JobQueue
 from ..vascular import io as vio
-from ..vascular.stats import capillary_branch_order, network_statistics, tissue_vessel_distance
+from ..vascular.stats import (
+    JI_CAPILLARY_MAX_DIAMETER_UM,
+    capillary_branch_order,
+    contract_branches,
+    network_statistics,
+    tissue_vessel_distance,
+)
 
 DEFAULT_RUN_DIR = os.environ.get("NVS_RUN_DIR", "runs")
 DEFAULT_WORKERS = int(os.environ.get("NVS_WORKERS", "1"))
@@ -117,7 +123,11 @@ def create_app(run_dir: str = DEFAULT_RUN_DIR, web_dir: str | None = DEFAULT_WEB
 
     @app.post("/api/networks/stats")
     def network_stats(req: NetworkRequest):
-        """Morphometry and capillary topology, for comparison with measurements."""
+        """Morphometry and capillary topology, for comparison with measurements.
+
+        Counted as the papers count: per branch (vessel between branch points),
+        and capillaries are vessels at most 7 um wide (Ji et al. 2021).
+        """
         try:
             case = registry.create("network", req.name, **req.params)
         except KeyError as e:
@@ -127,9 +137,11 @@ def create_app(run_dir: str = DEFAULT_RUN_DIR, web_dir: str | None = DEFAULT_WEB
         # Undefined values (no volume, an empty vessel class) come out as null.
         with np.errstate(all="ignore"), warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
+            branches = contract_branches(case.graph, JI_CAPILLARY_MAX_DIAMETER_UM)
             out = {
-                "statistics": network_statistics(case.graph),
-                "branch_order": capillary_branch_order(case.graph),
+                "definitions": {"unit": "branch", "capillary_max_diameter_um": JI_CAPILLARY_MAX_DIAMETER_UM},
+                "statistics": network_statistics(branches),
+                "branch_order": capillary_branch_order(branches),
                 "tissue_distance": tissue_vessel_distance(case.graph),
             }
         return _finite(out)
