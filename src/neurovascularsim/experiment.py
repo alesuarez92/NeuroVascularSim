@@ -54,6 +54,10 @@ class ExperimentSpec:
     conditions: list[Condition] = field(default_factory=list)
     solver: dict[str, Any] = field(default_factory=dict)
     description: str = ""
+    # Optional models run after flow: parameters of OxygenParams / BoldParams
+    # (an empty dict runs the model with its defaults; None skips it).
+    oxygen: dict[str, Any] | None = None
+    bold: dict[str, Any] | None = None
     spec_version: int = SPEC_VERSION
 
     # -- serialisation ---------------------------------------------------
@@ -75,6 +79,8 @@ class ExperimentSpec:
             ],
             solver=dict(d.get("solver", {})),
             description=d.get("description", ""),
+            oxygen=None if d.get("oxygen") is None else dict(d["oxygen"]),
+            bold=None if d.get("bold") is None else dict(d["bold"]),
         )
 
     @classmethod
@@ -105,6 +111,17 @@ class ExperimentSpec:
         for c in self.conditions:
             for p in c.perturbations:
                 registry.get("perturbation", p.name)
+        from .vascular.bold import BoldParams
+        from .vascular.oxygen import OxygenParams
+
+        for key, model in (("oxygen", OxygenParams), ("bold", BoldParams)):
+            opts = getattr(self, key)
+            if opts is not None:
+                unknown = set(opts) - set(model.__dataclass_fields__)
+                if unknown:
+                    raise ValueError(f"unknown {key} options {sorted(unknown)}; allowed: {sorted(model.__dataclass_fields__)}")
+        if self.bold is not None and self.oxygen is None:
+            raise ValueError("the BOLD model needs the oxygen model (set 'oxygen', e.g. to {})")
 
 
 @dataclass
@@ -162,23 +179,59 @@ def _fields(sol) -> dict:
     }
 
 
+def _inlet_nodes(case, sol) -> list[int]:
+    """Where arterial blood enters: the network's sources, else pressure nodes with outflow."""
+    if case.meta.get("sources"):
+        return list(case.meta["sources"])
+    g = case.graph
+    net = np.zeros(g.n_nodes)
+    np.add.at(net, g.edges[:, 0], sol.flow)
+    np.add.at(net, g.edges[:, 1], -sol.flow)
+    return [n for n in case.pressure_bc if net[n] > 0]
+
+
+def _tissue_slice(ox) -> dict:
+    """The tissue PO2 plane through the middle of the column (x by depth), for display."""
+    t = ox.tissue_po2
+    mid = t.shape[1] // 2
+    return {
+        "po2_mmhg": np.round(t[:, mid, :].T, 1).tolist(),  # rows: z (depth), columns: x
+        "voxel_um": float(ox.voxel / 1e-6),
+        "origin_um": (ox.grid_origin / 1e-6).tolist(),
+    }
+
+
 def run_experiment(spec: ExperimentSpec, progress: Callable[[str, int, int], None] | None = None) -> RunRecord:
     """Solve the baseline and every condition, and summarise the changes.
 
     ``progress(stage, done, total)`` is called before each step (building the
     network, then each solve). It may raise to abort the run between steps.
+    With ``spec.oxygen`` each solve includes oxygen transport, and with
+    ``spec.bold`` each condition gets a laminar BOLD profile.
     """
+    from .vascular.bold import BoldParams, bold_profile
+    from .vascular.oxygen import OxygenParams, solve_oxygen
+
     spec.validate()
     total = 2 + len(spec.conditions)
     report = progress or (lambda stage, done, total: None)
     report("network", 0, total)
     base_case = registry.create("network", spec.network.name, **spec.network.params)
     solver = dict(spec.solver)
+    oxygen = None if spec.oxygen is None else OxygenParams(**spec.oxygen)
+    bold = None if spec.bold is None else BoldParams(**spec.bold)
 
     def solve(case):
         sol = solve_flow(case.graph, case.pressure_bc, inlet_hematocrit=case.inlet_hematocrit, **solver)
         out = _fields(sol)
         out["diameter"] = case.graph.diameter.tolist()
+        if oxygen is not None:
+            ox = solve_oxygen(case.graph, sol, oxygen, cmro2_scales=case.meta.get("cmro2_scales"),
+                              inlet_nodes=_inlet_nodes(case, sol))
+            out["po2"] = np.round(ox.po2, 3).tolist()
+            out["so2"] = np.round(ox.so2, 5).tolist()
+            out["oxygen"] = {k: v for k, v in ox.summary.items() if k != "change_history"}
+            out["tissue_slice"] = _tissue_slice(ox)
         return sol, out
 
     report("baseline", 1, total)
@@ -198,6 +251,9 @@ def run_experiment(spec: ExperimentSpec, progress: Callable[[str, int, int], Non
             "relative_flow": [None if not np.isfinite(x) else float(x) for x in rel],
             "hematocrit_change": (sol.hematocrit - base_sol.hematocrit).tolist(),
         }
+        if bold is not None and base_case.graph.depth is not None:
+            summary[cond.label]["bold"] = bold_profile(
+                base_case.graph, base_out["diameter"], base_out["so2"], out["diameter"], out["so2"], bold)
 
     return RunRecord(
         id=uuid.uuid4().hex[:12],

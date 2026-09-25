@@ -73,3 +73,23 @@ def scale_diameter(edges=None, vessel_types=None, factor: float = 1.3, depth_ran
         return replace(case, graph=case.graph.with_diameter(d), meta=dict(case.meta))
 
     return apply
+
+
+@registry.register(
+    "perturbation",
+    "scale_cmro2",
+    description="Multiply tissue oxygen consumption (CMRO2), everywhere or in a depth range or layers; "
+                "used by the oxygen model (e.g. neuronal activation).",
+    parameters={"factor": 1.2, "depth_range_um": None, "layers": []},
+)
+def scale_cmro2(factor: float = 1.2, depth_range_um=None, layers=None):
+    if factor < 0:
+        raise ValueError("factor must be non-negative")
+    entry = {"factor": float(factor), "depth_range_um": depth_range_um, "layers": list(layers or [])}
+
+    def apply(case: NetworkCase) -> NetworkCase:
+        meta = dict(case.meta)
+        meta["cmro2_scales"] = [*meta.get("cmro2_scales", []), entry]
+        return replace(case, meta=meta)
+
+    return apply
