@@ -11,3 +11,7 @@ __pycache__/
 build/
 dist/
 runs/
+
+# Personal agent settings and preferences stay local (never committed)
+.claude/
+CLAUDE.local.md

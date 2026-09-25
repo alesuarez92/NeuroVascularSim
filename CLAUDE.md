@@ -39,6 +39,23 @@ Before any meaningful work, announce one of:
 
 - Commit with a clear message describing the change.
 
+## Local agent settings
+
+- Never commit the `.claude/` folder or `CLAUDE.local.md`: the owner's
+  preferences stay local (both are in `.gitignore`).
+
+## Citations
+
+- Every number, parameter, dataset or experimental setup taken from the
+  literature is cited to the real research paper it came from (authors,
+  year, journal, DOI), in the code comment and in `docs/`. No "standard
+  value" without a source; if no source is found, say so plainly.
+
+## Sessions
+
+- Keep context use low (under ~30%): delegate long reading and searches to
+  subagents, read only the parts of files needed, keep outputs short.
+
 ## Data
 
 - Lab recordings are the owner's lab property and are never committed. Tests and demos use synthetic data with known ground truth.
