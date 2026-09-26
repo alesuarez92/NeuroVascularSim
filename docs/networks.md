@@ -227,6 +227,38 @@ capillary size (branch order 5.1, against 3.4 measured). The arteriolar
 share of extraction stays far below the measured 50% in every variant (see
 [oxygen.md](oxygen.md)).
 
+**Oxygen-driven metabolic signal** (`adapt_metabolic_source="oxygen"`,
+optional). This is the published mechanism. Hypoxic tissue releases a growth factor
+at a rate 1 / (1 + (PO2 / 40 mmHg)^2.5); it diffuses and decays with a 50 µm
+length (D = 2 × 10⁻⁷ cm²/s, K = 8 × 10⁻³ /s), and each vessel's metabolic
+source is the growth factor at its midpoint (k_GF = 1). Tissue PO2 is
+re-solved every 20 adaptation steps. The values come from AngioAdapt20
+(SoluteParams.dat, tissrate.cpp, conductconvect.cpp). The authors fitted them
+to their own simulation criteria: "Parameter values for GF transport ... are
+not generally available" (Alberding & Secomb 2021). Seeds 0–3, full column
+(means):
+
+| Quantity | Uniform signal | Oxygen-driven signal | Measured / benchmark |
+|---|---|---|---|
+| Capillary diameter (median) | 4.3 µm | 6.7 µm | 4.0 ± 1.0 (Schmid 2017) |
+| Perfusion | 87 mL/100 g/min | 123 mL/100 g/min | 90 ± 7 (Xu 2022) |
+| Mean capillary speed | 0.49 mm/s | 0.56 mm/s | 0.71 (Li 2019) |
+| Spread of speeds (SD / mean) | 1.4 | 1.4 | 1.4–1.6 (Schmid 2017, simulated) |
+| Capillaries below 0.1 mm/s | 28% | 31% | few (Li 2019) |
+| Red-cell flux, layer 1 : layer 5 | 1.1 | 1.4 | ~1.1 (Li 2019) |
+| OEF | 0.31 | 0.22 | 0.32–0.39 (Li 2019, awake) |
+| Share of extraction by arterioles | 0.14 | 0.11 | 0.34 awake (Li 2019) |
+| Hypoxic tissue (< 10 mmHg) | 19% | 16% | little |
+
+With the published values the growth factor widens capillaries by about
+50%, perfusion rises above the measured value, and OEF falls below its
+range. Hypoxic tissue barely drops, because the slow capillaries stay slow.
+The uniform signal therefore stays the default. The uptake constant k_GF
+(`adapt_gf_permeability`) has arbitrary units, and a smaller value would
+bring capillary diameters back towards 4 µm; that would be a calibration,
+not a measured value (owner to decide). One oxygen-driven run on the full
+column takes about 23 minutes (9 oxygen solves).
+
 Sources:
 - Li B, …, Sakadžić S 2019, *eLife* 8:e42299,
   [doi:10.7554/eLife.42299](https://doi.org/10.7554/eLife.42299).

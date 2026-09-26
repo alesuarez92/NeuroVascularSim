@@ -1,40 +1,22 @@
 # Handoff
 
-Last updated: 2026-09-26. Branch: `main` (all work committed and pushed; CI
+Last updated: 2026-09-26 (second session). Branch: `main` (all work committed and pushed; CI
 green on the last code commits).
 
 ## Done in the last session
 
-- **Diagnosis of uneven capillary flow** (docs/networks.md, "Why capillary
-  flow is uneven"): short arteriole-to-venule paths dominate; trunk pressure
-  loss is in line with Schmid 2017; layout tuning alone cannot fix it.
-- **Column options** (all parameters exposed in the app):
-  `pa_branches_per_trunk`, `av_branches_per_trunk`,
-  `periarteriolar_free_radius_um` / `_depth_um` (capillary-free sleeve,
-  Kasischke 2011; off, it did not help), plus the previously hidden
-  unsourced settings.
-- **Optional structural adaptation** (`vascular/adaptation.py`,
-  `structural_adaptation=True`): Alberding & Secomb 2021 model, parameters
-  from their code AngioAdapt20 (reimplemented). Defaults: capillaries only
-  (Hill 2015, Grant 2019), tissue pressure 5.1 mmHg (Feiler 2010), uniform
-  metabolic signal 0.1 (calibrated to capillary diameter 4 ± 1 µm).
-- **Measured defaults** (owner's decision): hematocrit 0.415 (Mazzaccara
-  2008), CMRO2 2.44 µmol/g/min (Zhu 2013), inlet pressure 44 mmHg
-  calibrated to CBF 90 mL/100 g/min (Xu 2022).
-- **Validation** (docs/networks.md, "Structural adaptation"; docs/oxygen.md):
-  with adaptation, perfusion 87, OEF 0.32 (measured 0.32–0.39 awake), layer
-  1 : 5 flux 1.1 (1.1), speed spread 1.4, arteriole PO2 100 → 88 mmHg L1 →
-  L5 (99 → 84). Remaining gaps: 28% slow capillaries, 19% hypoxic tissue,
-  mean capillary speed 0.49 mm/s (0.71), arteriolar share 0.14 (0.34 awake).
-- **Mesoscopic summaries** (`vascular/summary.py`): every run stores column
-  and per-layer outputs (training data for learned mesoscopic models).
-- **Parameter documentation** (`paramdocs.py`, `_paramdocs_catalog.py`,
-  `/api/docs`): meaning, unit, group, level and source for every setting.
-- **Web app redesign**: floating windows (Setup, Network, Results, Runs &
-  jobs) with pop-out and sync; six-step Setup wizard with physiological
-  figures, live mini-figures and "?" help dialogs.
-- **VISION.md "Design principles"**: modular systems, detail on demand,
-  learned mesoscopic surrogates.
+- **Oxygen-driven metabolic signal** (owner approved, as an option):
+  `adapt_metabolic_source="oxygen"` in `vascular/adaptation.py` (growth
+  factor from hypoxic tissue, Alberding & Secomb 2021 / AngioAdapt20 values;
+  the authors fitted them). Validation in docs/networks.md ("Oxygen-driven
+  metabolic signal"): with the published values capillaries widen to 6.7 µm,
+  perfusion 123, OEF 0.22, hypoxic tissue 16% (uniform: 4.3 µm, 87, 0.31,
+  19%). The uniform signal stays the default.
+- `solve_oxygen(..., initial_tissue_po2=...)` warm start; `oxygen.neg_laplacian`.
+- **Web**: red cells now sit inside the fast branch of the phase-separation
+  figure; new bifurcation logo (header + favicon, `web/src/Logo.tsx`,
+  `web/public/favicon.svg`); Open Graph image `web/public/og.jpg`, made by
+  `scripts/og_image.py`, with og/twitter meta tags in `web/index.html`.
 
 ## In flight
 
@@ -42,10 +24,8 @@ Nothing. No background agents or jobs.
 
 ## Next steps
 
-1. **Oxygen-driven metabolic signal for adaptation** (the published
-   Alberding & Secomb mechanism: growth factor from hypoxic tissue, instead
-   of the uniform signal), to cut the 19% hypoxic tissue and the slow
-   capillaries. Proposed to the owner; not yet approved.
+1. Owner decision: calibrate `adapt_gf_permeability` (k_GF) to capillary
+   diameter 4 ± 1 µm, or keep the oxygen source at its published values.
 2. Surface (pial) veins so the laminar BOLD profile can be compared with
    measurements.
 3. Vessel-wall cells (endothelial conduction, smooth muscle, pericytes),
@@ -53,12 +33,14 @@ Nothing. No background agents or jobs.
 
 ## Open questions for the owner
 
-- Approve step 1 above?
-- **Context-budget hook**: install the NeuroAnalyzer hook here
-  (`.claude/hooks/context-handoff.sh` and `.claude/settings.json`, plus the
-  "Context budget" section of its CLAUDE.md and the `.gitignore`
-  exceptions)? The previous session's attempt to copy it was blocked by the
-  safety system (external code that changes Claude's settings), so it needs
-  the owner's explicit go-ahead or to be copied by the owner.
+- Calibrate k_GF (step 1)?
+- **Context-budget hook**: approved by the owner, but the safety system
+  blocked the copy again, so the owner has to copy it: `.claude/settings.json`
+  and `.claude/hooks/context-handoff.sh` from NeuronalDataAnalyzerLab, the
+  `.gitignore` exceptions (`!.claude/settings.json`, `!.claude/hooks/`,
+  `!.claude/hooks/*.sh`), the "Context budget" section of its CLAUDE.md, and
+  a change to this CLAUDE.md's "Never commit the `.claude/` folder" line.
+- GitHub social preview: upload `web/public/og.jpg` in the repository's
+  Settings → Social preview (not possible from the API).
 - Source of the default cortical depth (1200 µm): the code cites "Schmid et
   al. 2017" without saying which of the two 2017 papers.
