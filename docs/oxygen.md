@@ -38,7 +38,7 @@ activation).
 | Parameter | Default | Source |
 |---|---|---|
 | Hill n, P50 | 2.59, 40.2 mmHg | C57BL/6 mice, as used by Sakadžić et al. 2014 |
-| CMRO2 (maximal, M0) | 2.3 µmol/g/min | Sakadžić et al. 2014 (model value matching their data) |
+| CMRO2 (maximal, M0) | 2.44 µmol/g/min | Zhu et al. 2013, *NeuroImage* 64:437, [doi:10.1016/j.neuroimage.2012.09.028](https://doi.org/10.1016/j.neuroimage.2012.09.028) (17O-MRS, mouse cortex) |
 | Pial arteriole PO2 (inflow) | 100 mmHg | Sakadžić et al. 2014 |
 | O2 solubility α (plasma and tissue) | 1.27 µM/mmHg | Fang et al. 2008 (mouse cortex VAN model); Lücker et al. 2018 give 1.11 (plasma) and 1.53 (tissue) |
 | O2 diffusivity in tissue | 2.4·10⁻⁹ m²/s | Fang et al. 2008; Lücker et al. 2018 (2.41·10⁻⁵ cm²/s) |
@@ -104,11 +104,13 @@ Other parts of the gap:
   This is the classical gap between measured and predicted arteriolar
   oxygen loss, and it is left open.
 
-**With structural adaptation** (`structural_adaptation=True`, capillaries
-only, tissue pressure 5.1 mmHg; seeds 0–3): OEF 0.24, arteriolar share of
-extraction 0.13 and 7% hypoxic tissue, with red-cell flux nearly equal in
-layers 1–5 (see [networks.md](networks.md), structural adaptation). Most of
-the OEF gap closes; the arteriolar share does not.
+**With structural adaptation** and the current defaults (perfusion
+calibrated to the measured 90 mL/100 g/min, hematocrit 0.415, CMRO2 2.44;
+seeds 0–3): OEF 0.32 (measured 0.32–0.39 awake), arteriolar share 0.14
+(0.34 awake), 19% hypoxic tissue. Penetrating-arteriole PO2 falls from 100
+mmHg in L1 to 88 in L5 (measured awake: 99 to 84; Li 2019). The OEF gap was
+mass balance (too much flow); what remains is the spread of flow between
+capillaries (see [networks.md](networks.md), structural adaptation).
 
 **Why arterioles release too little oxygen (investigation, adapted column,
 seed 0).** Measured the way Sakadžić 2014 defines it (saturation drop from

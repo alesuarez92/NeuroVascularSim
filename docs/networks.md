@@ -202,15 +202,24 @@ intracranial pressure (Feiler 2010). Seeds 0–3, full column:
 
 | Quantity | Without | With adaptation | Measured / benchmark |
 |---|---|---|---|
-| Capillary diameter (median) | 4.0 µm | 4.1 µm | 4.0 ± 1.0 (Schmid 2017) |
+| Perfusion | 91 mL/100 g/min | 87 mL/100 g/min | 90 ± 7 (Xu 2022, awake; inlet pressure calibrated to it) |
+| Capillary diameter (median) | 4.0 µm | 4.3 µm | 4.0 ± 1.0 (Schmid 2017) |
 | Capillary branch order | 3.5 | 3.5 | 3.4 ± 0.2 (Ji 2021) |
-| Mean capillary speed | 0.49 mm/s | 0.65 mm/s | 0.71 (Li 2019) |
+| Mean capillary speed | 0.35 mm/s | 0.49 mm/s | 0.71 (Li 2019) |
 | Spread of speeds (SD / mean) | 2.3 | 1.4 | 1.4–1.6 (Schmid 2017, simulated) |
-| Capillaries below 0.1 mm/s | 42% | 19% | few (Li 2019) |
-| Red-cell flux, layer 1 : layer 5 | 3.3 | 1.06 | ~1.1 (Li 2019) |
-| OEF | 0.15 | 0.24 | 0.35 (Sakadžić 2014) |
-| Share of extraction by arterioles | 0.19 | 0.13 | 0.50 (Sakadžić 2014) |
-| Hypoxic tissue (< 10 mmHg) | 41% | 7% | little |
+| Capillaries below 0.1 mm/s | 50% | 28% | few (Li 2019) |
+| Red-cell flux, layer 1 : layer 5 | 3.1 | 1.1 | ~1.1 (Li 2019) |
+| OEF | 0.21 | 0.32 | 0.32–0.39 (Li 2019, awake); 0.35 (Zhu 2013; Sakadžić 2014) |
+| Share of extraction by arterioles | 0.22 | 0.14 | 0.34 awake (Li 2019); 0.50 anaesthetised (Sakadžić 2014) |
+| Hypoxic tissue (< 10 mmHg) | 51% | 19% | little |
+
+Defaults since 2026-09-26: inlet pressure 44 mmHg (calibrated to the
+measured perfusion; no mouse pial pressure measurement was found),
+hematocrit 0.415 (Mazzaccara 2008) and CMRO2 2.44 µmol/g/min (Zhu 2013).
+With the measured perfusion, OEF comes into the measured range by mass
+balance (CMRO2 = OEF × CBF × arterial O2 content). The remaining gap is the
+spread of flow: slow capillaries leave 19% of the tissue hypoxic even with
+adaptation.
 
 Adapting all microvessels (`adapt_scope="microvessels"`, no tissue
 pressure) gives OEF 0.35 and 4% hypoxic tissue, but shrinks the offshoots to
@@ -234,6 +243,12 @@ Sources:
   code: github.com/secomb/AngioAdapt20 (reimplemented, not copied).
 - Hill RA, …, Grutzendler J 2015, *Neuron* 87:95,
   [doi:10.1016/j.neuron.2015.06.001](https://doi.org/10.1016/j.neuron.2015.06.001).
+- Xu M, …, Thompson GJ 2022, *J Cereb Blood Flow Metab* 42:811,
+  [doi:10.1177/0271678X211062279](https://doi.org/10.1177/0271678X211062279).
+- Zhu XH, Chen JM, Tu TW, Chen W, Song SK 2013, *NeuroImage* 64:437,
+  [doi:10.1016/j.neuroimage.2012.09.028](https://doi.org/10.1016/j.neuroimage.2012.09.028).
+- Mazzaccara C, …, 2008, *PLoS One* 3:e3772,
+  [doi:10.1371/journal.pone.0003772](https://doi.org/10.1371/journal.pone.0003772).
 - Feiler S, …, Plesnila N 2010, *J Neurosci Methods* 190:164,
   [doi:10.1016/j.jneumeth.2010.05.005](https://doi.org/10.1016/j.jneumeth.2010.05.005).
 - Pries AR, Secomb TW, Gaehtgens P 1998, *Am J Physiol* 275:H349,
