@@ -32,7 +32,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import numpy as np
 
-from .. import __version__, registry
+from .. import __version__, paramdocs, registry
 from ..experiment import ExperimentSpec, RunStore, run_experiment
 from ..jobs import JobQueue
 from ..vascular import io as vio
@@ -103,6 +103,7 @@ def _plugin_info(kind: str, name: str) -> dict:
         "reference": p.reference,
         "parameters": p.parameters,
         "choices": p.choices,
+        "docs": paramdocs.docs_for(f"{kind}/{name}"),
     }
 
 
@@ -142,6 +143,11 @@ def create_app(run_dir: str = DEFAULT_RUN_DIR, web_dir: str | None = DEFAULT_WEB
             kind: {"contract": registry.KINDS[kind], "plugins": [_plugin_info(kind, n) for n in names]}
             for kind, names in registry.available().items()
         }
+
+    @app.get("/api/docs")
+    def docs():
+        """Parameter documentation (meaning, unit, group, level, source) for every documented scope."""
+        return {scope: paramdocs.docs_for(scope) for scope in paramdocs.DOCS}
 
     @app.get("/api/models")
     def models():

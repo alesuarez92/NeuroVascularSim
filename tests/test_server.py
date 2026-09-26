@@ -177,3 +177,12 @@ def test_saved_run_is_served_as_stored(client):
     run = client.post("/api/runs", json=EXAMPLE).json()
     r = client.get(f"/api/runs/{run['id']}")
     assert r.headers["content-type"].startswith("application/json") and r.json()["id"] == run["id"]
+
+
+def test_parameter_docs_are_served(client):
+    net = next(p for p in client.get("/api/plugins").json()["network"]["plugins"] if p["name"] == "mouse_cortex_synthetic")
+    assert set(net["docs"]["params"]) == set(net["parameters"])
+    doc = net["docs"]["params"]["tissue_pressure_mmhg"]
+    assert doc["unit"] == "mmHg" and "Feiler" in doc["source"] and doc["level"] in ("basic", "advanced")
+    docs = client.get("/api/docs").json()
+    assert {"model/oxygen", "model/bold", "model/solver", "perturbation/scale_diameter"} <= set(docs)
