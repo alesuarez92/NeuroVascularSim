@@ -5,6 +5,20 @@ type Props = RegionProps & { hematocrit?: number };
 
 const PROFILE = [-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1];
 
+// Control points of the fast branch path "M96 188 C 130 188, 140 156, 186 152".
+const FAST_BRANCH = [[96, 188], [130, 188], [140, 156], [186, 152]];
+const FAST_BRANCH_T = [0.3, 0.6, 0.88];
+
+/** Point and tangent angle (degrees) at ``t`` on the fast branch, so its red cells sit inside the vessel. */
+function onFastBranch(t: number) {
+  const [p0, p1, p2, p3] = FAST_BRANCH;
+  const u = 1 - t;
+  const at = (i: 0 | 1) => u ** 3 * p0[i] + 3 * u * u * t * p1[i] + 3 * u * t * t * p2[i] + t ** 3 * p3[i];
+  const slope = (i: 0 | 1) => 3 * u * u * (p1[i] - p0[i]) + 6 * u * t * (p2[i] - p1[i]) + 3 * t * t * (p3[i] - p2[i]);
+  // Cells are drawn upright (ry > rx), i.e. across a horizontal vessel; keep them across the branch.
+  return { x: at(0), y: at(1), angle: (Math.atan2(slope(1), slope(0)) * 180) / Math.PI };
+}
+
 /**
  * Blood in a microvessel: plasma with a cell-free layer at the wall, red
  * cells in the core (as many as the hematocrit says), a blunted velocity
@@ -55,7 +69,10 @@ export function BloodFigure({ hematocrit = 0.45, highlight, onSelect, onHover }:
         <path d="M96 188 C 130 188, 140 156, 186 152" className="f-art-tube" style={{ strokeWidth: 14 }} fill="none" />
         <path d="M96 188 C 130 188, 140 222, 186 226" className="f-art-tube" style={{ strokeWidth: 8 }} fill="none" />
         {[36, 56, 76].map((x) => <ellipse key={x} cx={x} cy={188} rx={4} ry={5} className="f-rbc" />)}
-        {[130, 150, 170].map((x, i) => <ellipse key={x} cx={x} cy={166 - i * 4} rx={4} ry={5} className="f-rbc" />)}
+        {FAST_BRANCH_T.map((t) => {
+          const { x, y, angle } = onFastBranch(t);
+          return <ellipse key={t} cx={x} cy={y} rx={4} ry={5} className="f-rbc" transform={`rotate(${angle} ${x} ${y})`} />;
+        })}
         <text x={22} y={150} className="f-small">fast branch: more cells</text>
         <text x={22} y={238} className="f-small">slow branch: fewer</text>
       </Region>
