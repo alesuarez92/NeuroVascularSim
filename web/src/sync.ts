@@ -12,7 +12,10 @@ export type SyncMessage =
   | { source: string; kind: "spec"; spec: ExperimentSpec }
   | { source: string; kind: "run"; runId: string | null }
   | { source: string; kind: "hello" } // a window just opened: others send what they show
-  | { source: string; kind: "popin"; window: WinId }; // a popped-out view was closed
+  | { source: string; kind: "popin"; window: WinId } // a popped-out view was closed, or is asked to close
+  | { source: string; kind: "popout"; window: WinId } // a view is shown in its own window (sent on opening and on "hello")
+  | { source: string; kind: "jobs" } // a job was submitted or cancelled: refresh the job and run lists
+  | { source: string; kind: "open"; window: WinId }; // a popped-out view asks the main page to show a window
 
 /** What a received message asks this window to do. */
 export type SyncAction =
@@ -20,7 +23,10 @@ export type SyncAction =
   | { kind: "spec"; spec: ExperimentSpec; json: string }
   | { kind: "run"; runId: string | null }
   | { kind: "reply" }
-  | { kind: "popin"; window: WinId };
+  | { kind: "popin"; window: WinId }
+  | { kind: "popout"; window: WinId }
+  | { kind: "open"; window: WinId }
+  | { kind: "refresh" };
 
 /**
  * Interpret a message. Messages from this window, malformed ones, and specs
@@ -44,10 +50,14 @@ export function handleSyncMessage(data: unknown, self: string, currentSpecJson: 
     }
     case "hello":
       return { kind: "reply" };
-    case "popin": {
+    case "popin":
+    case "popout":
+    case "open": {
       const w = (m as { window?: unknown }).window;
-      return isWinId(w) ? { kind: "popin", window: w } : { kind: "none" };
+      return isWinId(w) ? { kind: m.kind, window: w } : { kind: "none" };
     }
+    case "jobs":
+      return { kind: "refresh" };
     default:
       return { kind: "none" };
   }

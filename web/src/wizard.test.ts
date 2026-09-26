@@ -196,6 +196,11 @@ describe("sync messages", () => {
     expect(handleSyncMessage({ source: "o", kind: "run", runId: "r1" }, "me", "", "r1").kind).toBe("none");
     expect(handleSyncMessage({ source: "o", kind: "hello" }, "me", "", null).kind).toBe("reply");
     expect(handleSyncMessage({ source: "o", kind: "popin", window: "network" }, "me", "", null)).toEqual({ kind: "popin", window: "network" });
+    expect(handleSyncMessage({ source: "o", kind: "popout", window: "setup" }, "me", "", null)).toEqual({ kind: "popout", window: "setup" });
+    expect(handleSyncMessage({ source: "o", kind: "open", window: "results" }, "me", "", null)).toEqual({ kind: "open", window: "results" });
+    expect(handleSyncMessage({ source: "o", kind: "open", window: "nope" }, "me", "", null).kind).toBe("none");
+    expect(handleSyncMessage({ source: "o", kind: "jobs" }, "me", "", null).kind).toBe("refresh");
+    expect(handleSyncMessage({ source: "me", kind: "jobs" }, "me", "", null).kind).toBe("none");
     expect(shouldBroadcast("a", "a")).toBe(false);
     expect(shouldBroadcast("b", "a")).toBe(true);
   });

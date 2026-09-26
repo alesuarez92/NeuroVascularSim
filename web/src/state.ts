@@ -20,7 +20,7 @@ import {
 import { defaultSolver } from "./ExperimentEditor";
 import { runToShow } from "./JobList";
 import { CHANNEL, handleSyncMessage, newWindowId, shouldBroadcast, type SyncMessage } from "./sync";
-import { DEFAULT_VIEW, type ViewSettings } from "./ViewControls";
+import { DEFAULT_VIEW, type ViewSettings } from "./viewSettings";
 import { type ColorBy, addEdgeToCondition, colorByKey, colorByOptions, computeView, visibleEdges } from "./viz";
 import type { WinId } from "./windows";
 
@@ -47,7 +47,14 @@ export function defaultSpec(plugins: Plugins): ExperimentSpec {
 const sameNetwork = (a: ExperimentSpec, b: ExperimentSpec) =>
   JSON.stringify(a.network) === JSON.stringify(b.network);
 
-export function useAppState(options: { onPopIn?: (w: WinId) => void } = {}) {
+type Options = {
+  onPopIn?: (w: WinId) => void; // the main page: a popped-out view came back
+  onPopOut?: (w: WinId) => void; // the main page: a view is shown in its own window
+  onOpen?: (w: WinId) => void; // the main page: a popped-out view asks to show a window
+  poppedAs?: WinId; // this page shows only this view (?window=<id>)
+};
+
+export function useAppState(options: Options = {}) {
   const [version, setVersion] = useState<string>("");
   const [plugins, setPlugins] = useState<Plugins | null>(null);
   const [docs, setDocs] = useState<Record<string, ParamDocs>>({});
@@ -79,8 +86,8 @@ export function useAppState(options: { onPopIn?: (w: WinId) => void } = {}) {
   specRef.current = spec;
   const runRef = useRef(run);
   runRef.current = run;
-  const popInRef = useRef(options.onPopIn);
-  popInRef.current = options.onPopIn;
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
   const post = (m: SyncMessage) => {
     try {
       channel.current?.postMessage(m);
@@ -105,11 +112,19 @@ export function useAppState(options: { onPopIn?: (w: WinId) => void } = {}) {
       } else if (action.kind === "reply") {
         if (specRef.current) post({ source: self.current, kind: "spec", spec: specRef.current });
         if (runRef.current) post({ source: self.current, kind: "run", runId: runRef.current.id });
+        announce();
       } else if (action.kind === "popin") {
-        popInRef.current?.(action.window);
+        optionsRef.current.onPopIn?.(action.window);
+      } else if (action.kind === "popout") {
+        optionsRef.current.onPopOut?.(action.window);
+      } else if (action.kind === "open") {
+        optionsRef.current.onOpen?.(action.window);
+      } else if (action.kind === "refresh") {
+        refreshJobsRef.current();
       }
     };
     post({ source: self.current, kind: "hello" });
+    announce();
     return () => {
       ch.close();
       channel.current = null;
@@ -133,6 +148,13 @@ export function useAppState(options: { onPopIn?: (w: WinId) => void } = {}) {
   }, [run]);
 
   const sendPopIn = (w: WinId) => post({ source: self.current, kind: "popin", window: w });
+  // A popped-out view tells the main page it is open (also after either page reloads).
+  function announce() {
+    const w = optionsRef.current.poppedAs;
+    if (w) post({ source: self.current, kind: "popout", window: w });
+  }
+  const sendOpen = (w: WinId) => post({ source: self.current, kind: "open", window: w });
+  const sendJobsChanged = () => post({ source: self.current, kind: "jobs" });
 
   // ---- Loading -----------------------------------------------------------
   useEffect(() => {
@@ -185,6 +207,8 @@ export function useAppState(options: { onPopIn?: (w: WinId) => void } = {}) {
     api.jobs().then(setJobs).catch(fail);
     api.runs().then(setRuns).catch(fail);
   };
+  const refreshJobsRef = useRef(refreshJobs);
+  refreshJobsRef.current = refreshJobs;
 
   // Describe the network whenever its name or parameters change.
   const networkKey = spec ? JSON.stringify(spec.network) : "";
@@ -221,6 +245,7 @@ export function useAppState(options: { onPopIn?: (w: WinId) => void } = {}) {
       setJobs((prev) => [job, ...prev]);
       setSubmitted((prev) => [...prev, job.id]);
       setError(null);
+      sendJobsChanged();
     } catch (e) {
       fail(e);
     }
@@ -230,6 +255,7 @@ export function useAppState(options: { onPopIn?: (w: WinId) => void } = {}) {
     try {
       const job = await api.cancelJob(id);
       setJobs((prev) => prev.map((j) => (j.id === id ? job : j)));
+      sendJobsChanged();
     } catch (e) {
       fail(e);
     }
@@ -273,7 +299,7 @@ export function useAppState(options: { onPopIn?: (w: WinId) => void } = {}) {
     version, plugins, docs, spec, setSpec, network, run, shownRun, runs, jobs, models, dataFiles, error, setError,
     colorBy: activeColorBy, setColorBy, colorOptions, view, drawnGraph, hover, setHover, rowHover, setRowHover,
     selected, setSelected, highlighted, visible, viewSettings, setViewSettings, running,
-    runExperiment, cancelJob, openRun, addSelectedTo, refreshDataFiles, refreshJobs, sendPopIn,
+    runExperiment, cancelJob, openRun, addSelectedTo, refreshDataFiles, refreshJobs, sendPopIn, sendOpen,
   };
 }
 

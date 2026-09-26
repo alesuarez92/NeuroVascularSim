@@ -85,7 +85,15 @@ function Desktop() {
   const vpRef = useRef(vp);
   const [layout, setLayout] = useState<Layout>(() => loadLayout(vp));
   const popups = useRef<Partial<Record<WinId, Window>>>({});
-  const s = useAppState({ onPopIn: (w) => setLayout((l) => setPoppedOut(l, w, false)) });
+  const s = useAppState({
+    onPopIn: (w) => setLayout((l) => setPoppedOut(l, w, false)),
+    // A popped-out view announces itself, also after this page reloads (the layout does not keep pop-outs).
+    onPopOut: (w) => setLayout((l) => (l[w].poppedOut ? l : setPoppedOut(l, w, true))),
+    onOpen: (w) => {
+      if (popups.current[w] && !popups.current[w]!.closed) popups.current[w]!.focus();
+      else setLayout((l) => (l[w].poppedOut ? l : openWindow(l, w, vpRef.current)));
+    },
+  });
   const narrow = isNarrow(vp);
 
   useEffect(() => {
@@ -131,6 +139,7 @@ function Desktop() {
   };
   const popIn = (id: WinId) => {
     popups.current[id]?.close();
+    s.sendPopIn(id); // closes the view also when this page did not open it (e.g. after a reload)
     delete popups.current[id];
     setLayout((l) => setPoppedOut(l, id, false));
   };
@@ -199,7 +208,7 @@ function Desktop() {
 
 /** One view in its own browser window, synced with the main page. */
 function PoppedView({ id }: { id: WinId }) {
-  const s = useAppState();
+  const s = useAppState({ poppedAs: id, onPopIn: (w) => w === id && window.close() });
   const sendPopIn = useRef(s.sendPopIn);
   sendPopIn.current = s.sendPopIn;
   useEffect(() => {
@@ -218,7 +227,7 @@ function PoppedView({ id }: { id: WinId }) {
           Return to the main window
         </button>
       </header>
-      <main className="popped-body">{content(id, s, () => {})}</main>
+      <main className="popped-body">{content(id, s, s.sendOpen)}</main>
     </div>
   );
 }

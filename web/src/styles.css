@@ -141,7 +141,6 @@ button:disabled { opacity: 0.55; cursor: default; }
 .file-field .row { align-items: center; }
 
 .toolbar { flex-wrap: wrap; row-gap: 6px; }
-.view-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; font-size: 12px; color: var(--ink-2); }
 .class-toggles { display: flex; gap: 10px; }
 .class-toggles label { margin: 0; }
 .slab { display: flex; align-items: center; gap: 6px; }
@@ -267,10 +266,39 @@ html, body, #root { height: 100%; }
 .scroll { overflow: auto; }
 
 /* ---- Network window ------------------------------------------------------- */
-.network-window { display: grid; grid-template-rows: auto minmax(160px, 1fr) minmax(110px, 30%); min-height: 0; height: 100%; }
-.network-window.no-bottom { grid-template-rows: auto 1fr auto; }
-.network-window .toolbar > label { min-width: 0; }
-.network-window .toolbar { gap: 10px; padding: 4px 12px; }
+/* The 3D stage takes most of the height: a one-row toolbar, and the table
+   below never more than 28% (it gives way first when the window is short). */
+.network-window { display: grid; grid-template-rows: auto minmax(120px, 1fr) minmax(0, 28%); min-height: 0; height: 100%; }
+.network-window.no-bottom { grid-template-rows: auto minmax(120px, 1fr) auto; }
+.network-shell { container: netwin / size; height: 100%; min-height: 0; display: flex; flex-direction: column; }
+.network-shell > .network-window { flex: 1; }
+@container netwin (max-height: 320px) {
+  .network-window, .network-window.no-bottom { grid-template-rows: auto minmax(0, 1fr); }
+  .network-window .bottom { display: none; }
+}
+.net-toolbar { position: relative; z-index: 5; gap: 6px 10px; padding: 3px 10px; min-height: 32px; box-sizing: border-box; }
+.net-toolbar > label.color-by { display: flex; align-items: center; gap: 6px; margin: 0; min-width: 0; flex: 0 1 auto; white-space: nowrap; }
+.net-toolbar .color-by select { min-width: 0; max-width: 220px; padding-top: 2px; padding-bottom: 2px; }
+.net-toolbar .run-status { font-size: 12px; min-width: 0; flex: 1 1 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+.view-menu { position: relative; flex: none; }
+.view-toggle.open { background: var(--plane); border-color: var(--accent); color: var(--ink); }
+.view-toggle .count {
+  display: inline-block; min-width: 16px; padding: 0 4px; margin: 0 2px; border-radius: 8px; background: var(--accent);
+  color: #fff; font-size: 11px; line-height: 16px; text-align: center;
+}
+.view-panel {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 30; display: grid; gap: 10px; width: max-content;
+  max-width: min(340px, calc(100vw - 32px)); padding: 10px 12px; background: #fff; border: 1px solid var(--border);
+  border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12); font-size: 12px; color: var(--ink-2);
+  max-height: calc(100cqh - 44px); overflow: auto; /* stays inside a short window (netwin container) */
+}
+.view-panel label.compact { margin: 0; }
+.view-panel .class-toggles { flex-wrap: wrap; }
+.view-panel .slab { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 2px 8px; }
+.view-panel .slab span { min-width: 0; }
+.view-panel .slab .slab-title { grid-column: 1 / -1; }
+.view-panel .slab input { width: auto; min-width: 120px; }
+.view-panel > button { justify-self: start; }
 .tab-right { margin-left: auto; }
 
 /* ---- Results -------------------------------------------------------------- */
