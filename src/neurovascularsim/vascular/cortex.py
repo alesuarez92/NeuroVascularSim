@@ -103,6 +103,11 @@ class MouseColumnParams:
     pa_branches_per_trunk: int = 0
     av_branches_per_trunk: int = 0
     pa_min_depth_fraction: float = 0.3  # model choice: no source for penetration depths
+    # Capillary-free cylinder around penetrating arterioles: radius 53 +/- 9 um,
+    # through layers I-IV (Kasischke et al. 2011, J Cereb Blood Flow Metab
+    # 31:68, doi:10.1038/jcbfm.2010.158). 0 turns it off (the default for now).
+    periarteriolar_free_radius_um: float = 0.0
+    periarteriolar_free_depth_um: float = 552.0  # bottom of L4 (LAYER_BOUNDS_UM)
     p_in_mmhg: float = 60.0
     p_out_mmhg: float = 10.0
     # "penetrating_tops": pressures fixed where arterioles and venules enter
@@ -462,6 +467,22 @@ def _build_mouse_column(p: MouseColumnParams, foam_length_density: float) -> Net
     min_dist = 0.5 / np.sqrt((n_pa + n_av) / (p.size_x_um * p.size_y_um))
     pa_xy = _surface_points(n_pa, p, rng, np.empty((0, 2)), min_dist)
     av_xy = _surface_points(n_av, p, rng, pa_xy, min_dist)
+
+    # Capillary-free tissue sleeve around penetrating arterioles: remove
+    # capillaries whose midpoint lies within the radius of an arteriole axis
+    # down to the given depth. Dead ends left behind are pruned at the end,
+    # and the outer density calibration adds capillaries elsewhere.
+    if p.periarteriolar_free_radius_um > 0:
+        ce = edge_list[0]
+        mid = 0.5 * (cpos[ce[:, 0]] + cpos[ce[:, 1]])
+        r = np.min(np.linalg.norm(mid[:, None, :2] - pa_xy[None, :, :], axis=2), axis=1)
+        drop = (r < p.periarteriolar_free_radius_um) & (mid[:, 2] <= p.periarteriolar_free_depth_um)
+        if drop.any():
+            keep = ~drop
+            edge_list[0], diam[0], lengths[0], vtype[0] = ce[keep], diam[0][keep], lengths[0][keep], vtype[0][keep]
+            cedges = edge_list[0]
+            cap_degree[:] = np.bincount(cedges.ravel(), minlength=len(cpos))
+            used_capillary_nodes.update(int(n) for n in np.flatnonzero(cap_degree == 0))
 
     seeds: dict[int, list[int]] = {VesselType.PRECAPILLARY_ARTERIOLE: [], VesselType.VENULE: []}
 
