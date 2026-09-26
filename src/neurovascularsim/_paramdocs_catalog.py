@@ -147,6 +147,17 @@ DOCS[_S] = {
     "adapt_metabolic_signal": P("Metabolic signal", "Uniform metabolic signal added per µm of vessel; it makes "
                                 "low-flow vessels grow. Calibrated so adapted capillary diameters match 4.0 ± 1.0 "
                                 "µm.", "per µm", _ADAPT, "advanced", "calibrated to " + SCHMID_2017),
+    "adapt_metabolic_source": P("Metabolic signal source", "\"uniform\": the uniform signal above. \"oxygen\": "
+                                "the published mechanism, a growth factor released by hypoxic tissue (half-maximal "
+                                "at 40 mmHg), diffusing with a 50 µm decay length; each vessel's signal is the "
+                                "growth factor at its midpoint. Needs an oxygen solve every few steps (slower).", "",
+                                _ADAPT, "advanced", ALBERDING_2021 + "; growth-factor values fitted by the authors, "
+                                "not measured"),
+    "adapt_gf_permeability": P("Growth-factor uptake", "Metabolic signal per µm of vessel per unit growth-factor "
+                               "concentration (oxygen source only).", "per µm", _ADAPT, "advanced",
+                               ALBERDING_2021 + " (k_GF = 1, arbitrary units)"),
+    "adapt_oxygen_update_steps": P("Oxygen update interval", "Adaptation steps between oxygen solves (oxygen source "
+                                   "only). Smaller is more accurate and slower.", "steps", _ADAPT, "advanced", MODEL),
     "adapt_k_m": P("Metabolic sensitivity", "Weight of the metabolic signal in the diameter response.", "", _ADAPT,
                    "advanced", ALBERDING_2021),
     "adapt_k_s": P("Shrinking tendency", "Constant tendency of vessels to shrink, balanced by the growth stimuli.",

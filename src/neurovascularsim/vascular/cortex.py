@@ -129,6 +129,9 @@ class MouseColumnParams:
     structural_adaptation: bool = False
     adapt_steps: int = 200
     adapt_metabolic_signal: float = 0.1
+    adapt_metabolic_source: str = "uniform"  # or "oxygen": growth factor from hypoxic tissue
+    adapt_gf_permeability: float = 1.0
+    adapt_oxygen_update_steps: int = 20
     adapt_k_m: float = 18.0
     adapt_k_s: float = 1.8
     adapt_tau_ref_dyn_cm2: float = 0.01
@@ -411,7 +414,9 @@ def build_mouse_column(p: MouseColumnParams) -> NetworkCase:
         from .adaptation import AdaptationParams, adapt_diameters
 
         case, _ = adapt_diameters(case, AdaptationParams(
-            steps=p.adapt_steps, metabolic_signal=p.adapt_metabolic_signal, k_m=p.adapt_k_m, k_s=p.adapt_k_s,
+            steps=p.adapt_steps, metabolic_signal=p.adapt_metabolic_signal,
+            metabolic_source=p.adapt_metabolic_source, gf_permeability=p.adapt_gf_permeability,
+            oxygen_update_steps=p.adapt_oxygen_update_steps, k_m=p.adapt_k_m, k_s=p.adapt_k_s,
             tau_ref_dyn_cm2=p.adapt_tau_ref_dyn_cm2, q_ref_nl_min=p.adapt_q_ref_nl_min,
             conduction_length_um=p.adapt_conduction_length_um, min_diameter_um=p.adapt_min_diameter_um,
             scope=p.adapt_scope, tissue_pressure_mmhg=p.tissue_pressure_mmhg))
@@ -643,12 +648,14 @@ _DEFAULTS = asdict(MouseColumnParams())
         "l4_density_boost", "p_in_mmhg", "p_out_mmhg", "hematocrit",
         "trunk_terminal_diameter_um", "connector_diameter_um", "pa_min_depth_fraction",
         "capillary_min_distance_fraction", "capillary_edge_noise",
-        "structural_adaptation", "adapt_steps", "adapt_metabolic_signal", "adapt_k_m", "adapt_k_s",
+        "structural_adaptation", "adapt_steps", "adapt_metabolic_signal", "adapt_metabolic_source",
+        "adapt_gf_permeability", "adapt_oxygen_update_steps", "adapt_k_m", "adapt_k_s",
         "adapt_tau_ref_dyn_cm2", "adapt_q_ref_nl_min", "adapt_conduction_length_um", "adapt_min_diameter_um",
         "adapt_scope", "tissue_pressure_mmhg",
     )},
     choices={"boundary": ["penetrating_tops", "pial_tree"], "capillary_bed": ["nearest_neighbour", "foam"],
-             "adapt_scope": ["capillaries", "microvessels", "all"]},
+             "adapt_scope": ["capillaries", "microvessels", "all"],
+             "adapt_metabolic_source": ["uniform", "oxygen"]},
 )
 def mouse_cortex_synthetic(**params) -> NetworkCase:
     """Network plugin: a synthetic mouse cortical column (see MouseColumnParams)."""

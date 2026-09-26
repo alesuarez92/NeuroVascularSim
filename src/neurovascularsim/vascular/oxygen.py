@@ -266,17 +266,22 @@ class _Grid:
 
     def neg_laplacian(self):
         """-Laplacian with closed (no-flux) faces, 1/m^2."""
-        def one_d(n):
-            """1D no-flux Laplacian stencil (unscaled) on ``n`` points."""
-            if n == 1:
-                return diags([0.0], [0], shape=(1, 1))
-            main = np.full(n, 2.0)
-            main[0] = main[-1] = 1.0
-            return diags([main, -np.ones(n - 1), -np.ones(n - 1)], [0, 1, -1])
-        nx, ny, nz = self.shape
-        ix, iy, iz = identity(nx), identity(ny), identity(nz)
-        lap = (kron(kron(one_d(nx), iy), iz) + kron(kron(ix, one_d(ny)), iz) + kron(kron(ix, iy), one_d(nz)))
-        return (lap / self.voxel**2).tocsr()
+        return neg_laplacian(self.shape, self.voxel)
+
+
+def neg_laplacian(shape, voxel):
+    """-Laplacian on a grid of ``shape`` voxels of size ``voxel`` (m), closed (no-flux) faces, 1/m^2."""
+    def one_d(n):
+        """1D no-flux Laplacian stencil (unscaled) on ``n`` points."""
+        if n == 1:
+            return diags([0.0], [0], shape=(1, 1))
+        main = np.full(n, 2.0)
+        main[0] = main[-1] = 1.0
+        return diags([main, -np.ones(n - 1), -np.ones(n - 1)], [0, 1, -1])
+    nx, ny, nz = shape
+    ix, iy, iz = identity(nx), identity(ny), identity(nz)
+    lap = (kron(kron(one_d(nx), iy), iz) + kron(kron(ix, one_d(ny)), iz) + kron(kron(ix, iy), one_d(nz)))
+    return (lap / voxel**2).tocsr()
 
 
 # -- metabolism --------------------------------------------------------------------------------
@@ -318,12 +323,15 @@ def cmro2_field(graph: VascularGraph, grid: _Grid, prm: OxygenParams, scales: li
 # -- solver ------------------------------------------------------------------------------------
 
 def solve_oxygen(graph: VascularGraph, flow: FlowSolution, params: OxygenParams | None = None,
-                 cmro2_scales: list | None = None, inlet_nodes=None) -> OxygenSolution:
+                 cmro2_scales: list | None = None, inlet_nodes=None,
+                 initial_tissue_po2: np.ndarray | None = None) -> OxygenSolution:
     """Steady oxygen in vessels and tissue for a converged flow solution.
 
     ``inlet_nodes``: where arterial blood enters (default: every node with
     outflow and no inflow). Other nodes without inflow take the tissue PO2.
     ``cmro2_scales``: consumption changes, e.g. from scale_cmro2 perturbations.
+    ``initial_tissue_po2``: starting tissue PO2 grid (e.g. a previous solution's
+    ``tissue_po2`` on the same grid), to converge faster after small changes.
     """
     prm = params or OxygenParams()
     blood = _Blood(prm)
@@ -340,6 +348,8 @@ def solve_oxygen(graph: VascularGraph, flow: FlowSolution, params: OxygenParams 
     lap_diag = neg_lap.diagonal()
 
     tissue = np.full(grid.size, 0.5 * prm.inlet_po2_mmhg)
+    if initial_tissue_po2 is not None and np.size(initial_tissue_po2) == grid.size:
+        tissue = np.clip(np.asarray(initial_tissue_po2, dtype=float).ravel(), 0.0, prm.inlet_po2_mmhg)
     m, max_steps = net.step_voxel.shape
     valid = net.step_voxel >= 0
 

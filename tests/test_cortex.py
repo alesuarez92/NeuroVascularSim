@@ -225,3 +225,34 @@ def test_adaptation_scope_and_tissue_pressure():
     assert not np.allclose(icp.graph.diameter, caps_only.graph.diameter)
     with pytest.raises(ValueError):
         adapt_diameters(case, AdaptationParams(scope="bogus"))
+
+
+def test_growth_factor_follows_tissue_po2():
+    """GF (Alberding & Secomb 2021) is 1 in anoxic tissue, f(PO2) in uniform tissue, and decays away from hypoxia."""
+    from neurovascularsim.vascular.adaptation import AdaptationParams, growth_factor
+
+    prm = AdaptationParams()
+    voxel = 10e-6
+    np.testing.assert_allclose(growth_factor(np.zeros((6, 6, 6)), voxel, prm), 1.0, atol=1e-6)
+    np.testing.assert_allclose(growth_factor(np.full((6, 6, 6), 40.0), voxel, prm), 0.5, atol=1e-6)
+    po2 = np.full((40, 3, 3), 60.0)
+    po2[:2] = 0.0  # hypoxic slab at one end
+    c = growth_factor(po2, voxel, prm)[:, 1, 1]
+    assert c[0] > c[10] > c[30] > 0
+    assert np.all(np.diff(c) <= 1e-12)
+
+
+def test_oxygen_driven_adaptation_runs():
+    """The oxygen source converges on a small column and reports its oxygen solves."""
+    from neurovascularsim.vascular.adaptation import AdaptationParams, adapt_diameters
+    from neurovascularsim.vascular.oxygen import OxygenParams
+
+    case = registry.create("network", "mouse_cortex_synthetic", size_x_um=200, size_y_um=200, depth_um=400, seed=1)
+    adapted, report = adapt_diameters(case, AdaptationParams(
+        metabolic_source="oxygen", oxygen_update_steps=10, oxygen=OxygenParams(voxel_um=20.0)))
+    assert report["converged"] and report["oxygen_solves"] >= 2
+    assert 0 < report["mean_metabolic_source_per_um"] < 1
+    cap = case.graph.vessel_type == VesselType.CAPILLARY
+    assert not np.allclose(adapted.graph.diameter[cap], case.graph.diameter[cap])
+    with pytest.raises(ValueError):
+        adapt_diameters(case, AdaptationParams(metabolic_source="bogus"))
