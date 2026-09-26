@@ -1,339 +1,224 @@
-import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+import { FloatingWindow } from "./FloatingWindow";
+import { NetworkWindow } from "./NetworkWindow";
+import { ResultsWindow, RunsWindow } from "./ResultsWindow";
+import { SetupWizard } from "./SetupWizard";
+import { type AppState, useAppState } from "./state";
 import {
-  api,
-  type DataFile,
-  type Job,
-  jobActive,
-  type ExperimentSpec,
-  type NetworkResponse,
-  type Plugins,
-  type RunEntry,
-  type RunRecord,
-} from "./api";
-import { SEGMENT_LABELS } from "./colors";
-import { EdgeTable } from "./EdgeTable";
-import { JobList, runToShow } from "./JobList";
-import { OxygenPanel } from "./OxygenPanel";
-import { ExperimentEditor, defaultSolver } from "./ExperimentEditor";
-import { Legend } from "./Legend";
-import { SelectionCard } from "./SelectionCard";
-import { StatsPanel } from "./StatsPanel";
-import { fmt, pct, toNlPerMin, toUm } from "./units";
-import { DEFAULT_VIEW, ViewControls, type ViewSettings } from "./ViewControls";
-import { type ColorBy, addEdgeToCondition, colorByKey, colorByOptions, computeView, visibleEdges } from "./viz";
+  WINDOW_IDS,
+  WINDOW_TITLES,
+  type Layout,
+  type Viewport,
+  type WinId,
+  adaptLayout,
+  bringToFront,
+  closeWindow,
+  defaultLayout,
+  deserializeLayout,
+  isNarrow,
+  isWinId,
+  moveWindow,
+  openWindow,
+  resizeWindow,
+  serializeLayout,
+  setPoppedOut,
+  toggleMaximize,
+  toggleMinimize,
+  topWindow,
+} from "./windows";
 
-// The 3D viewer (three.js) is the largest part of the app: load it as its own
-// chunk so the page and the forms appear before it has downloaded.
-const NetworkView = lazy(() => import("./NetworkView").then((m) => ({ default: m.NetworkView })));
+const DOCK_H = 44;
+const LAYOUT_KEY = "neurovascularsim.layout";
 
-function defaultSpec(plugins: Plugins): ExperimentSpec {
-  const nets = plugins.network?.plugins ?? [];
-  const net = nets.find((n) => n.name === "suarez2021a") ?? nets[0];
-  return {
-    name: "Arterial blood stealing",
-    description: "Dilate one daughter arteriole by 30% and compare with the baseline.",
-    network: { name: net?.name ?? "", params: { ...(net?.parameters ?? {}) } },
-    solver: defaultSolver(net?.name ?? ""),
-    conditions: [
-      {
-        label: "dilate_active_30pct",
-        perturbations: [{ name: "scale_diameter", params: { edges: ["active_edge"], factor: 1.3 } }],
-      },
-    ],
-    spec_version: 1,
-  };
+// Browser storage may be missing or blocked: the layout then just is not remembered.
+function loadLayout(vp: Viewport): Layout {
+  try {
+    return deserializeLayout(window.localStorage.getItem(LAYOUT_KEY), vp) ?? defaultLayout(vp);
+  } catch {
+    return defaultLayout(vp);
+  }
+}
+function saveLayout(l: Layout) {
+  try {
+    window.localStorage.setItem(LAYOUT_KEY, serializeLayout(l));
+  } catch {
+    // not remembered
+  }
 }
 
-const sameNetwork = (a: ExperimentSpec, b: ExperimentSpec) =>
-  JSON.stringify(a.network) === JSON.stringify(b.network);
+/** The view a page opened with ?window=<id> shows on its own, or null for the whole desktop. */
+function poppedView(): WinId | null {
+  try {
+    const w = new URLSearchParams(window.location.search).get("window");
+    return isWinId(w) ? w : null;
+  } catch {
+    return null;
+  }
+}
+
+function content(id: WinId, s: AppState, open: (id: WinId) => void): ReactNode {
+  switch (id) {
+    case "setup":
+      return <SetupWizard s={s} onShowResults={() => open("results")} onShowNetwork={() => open("network")} />;
+    case "network":
+      return <NetworkWindow s={s} />;
+    case "results":
+      return <ResultsWindow s={s} onShowNetwork={() => open("network")} />;
+    case "runs":
+      return <RunsWindow s={s} />;
+  }
+}
 
 /**
- * The whole app: experiment editor and runs on the left, the 3D network with
- * its view controls in the middle, vessel table and oxygen/BOLD results below.
- * State lives here; children get values and callbacks. The network is fetched
- * whenever its name or parameters change; runs are background jobs polled
- * until they finish.
+ * The app: a dock listing the windows (Setup, Network, Results, Runs &
+ * jobs) over a desktop where they float. A page opened with ?window=<id>
+ * shows only that view, kept in step with the main page.
  */
 export default function App() {
-  const [version, setVersion] = useState<string>("");
-  const [plugins, setPlugins] = useState<Plugins | null>(null);
-  const [spec, setSpec] = useState<ExperimentSpec | null>(null);
-  const [network, setNetwork] = useState<NetworkResponse | null>(null);
-  const [run, setRun] = useState<RunRecord | null>(null);
-  const [runs, setRuns] = useState<RunEntry[]>([]);
-  const [colorBy, setColorBy] = useState<ColorBy>({ kind: "type" });
-  const [hover, setHover] = useState<{ edge: number; x: number; y: number } | null>(null);
-  const [rowHover, setRowHover] = useState<number | null>(null);
-  const [selected, setSelected] = useState<number | null>(null);
-  const [viewSettings, setViewSettings] = useState<ViewSettings>(DEFAULT_VIEW);
-  const [dataFiles, setDataFiles] = useState<DataFile[]>([]);
-  const [models, setModels] = useState<Record<"oxygen" | "bold", Record<string, unknown>> | null>(null);
-  const [bottomTab, setBottomTab] = useState<"vessels" | "oxygen">("vessels");
-  const [error, setError] = useState<string | null>(null);
-  const [jobs, setJobs] = useState<Job[]>([]);
-  // Jobs submitted from this page, oldest first: a finished run opens by
-  // itself unless a later submission is still pending or already done.
-  const [submitted, setSubmitted] = useState<string[]>([]);
+  const popped = poppedView();
+  return popped ? <PoppedView id={popped} /> : <Desktop />;
+}
 
-  const fail = (e: unknown) => setError(e instanceof Error ? e.message : String(e));
+function Desktop() {
+  const desk = useRef<HTMLDivElement>(null);
+  const [vp, setVp] = useState<Viewport>(() => ({ w: window.innerWidth, h: Math.max(window.innerHeight - DOCK_H, 200) }));
+  const vpRef = useRef(vp);
+  const [layout, setLayout] = useState<Layout>(() => loadLayout(vp));
+  const popups = useRef<Partial<Record<WinId, Window>>>({});
+  const s = useAppState({ onPopIn: (w) => setLayout((l) => setPoppedOut(l, w, false)) });
+  const narrow = isNarrow(vp);
 
   useEffect(() => {
-    api.health().then((h) => setVersion(h.version)).catch(fail);
-    api.plugins().then((p) => {
-      setPlugins(p);
-      setSpec(defaultSpec(p));
-    }).catch(fail);
-    api.runs().then(setRuns).catch(fail);
-    api.dataFiles().then(setDataFiles).catch(fail);
-    api.jobs().then(setJobs).catch(fail);
-    api.models().then(setModels).catch(fail);
+    const el = desk.current;
+    if (!el) return;
+    const measure = () => {
+      const old = vpRef.current;
+      const next = { w: el.clientWidth, h: el.clientHeight };
+      if (next.w === old.w && next.h === old.h) return;
+      vpRef.current = next;
+      setVp(next);
+      setLayout((l) => adaptLayout(l, next, isNarrow(old)));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
-  // Poll while any job is queued or running.
-  const anyActive = jobs.some(jobActive);
-  const jobsRef = useRef(jobs);
-  jobsRef.current = jobs;
-  const submittedRef = useRef(submitted);
-  submittedRef.current = submitted;
+  useEffect(() => saveLayout(layout), [layout]);
+
+  // A popped-out window closed by the user comes back in-app.
   useEffect(() => {
-    if (!anyActive) return;
-    const t = setInterval(async () => {
-      try {
-        const next = await api.jobs();
-        const wasActive = new Set(jobsRef.current.filter(jobActive).map((j) => j.id));
-        const finished = next.filter((j) => !jobActive(j) && wasActive.has(j.id));
-        setJobs(next);
-        if (!finished.length) return;
-        setRuns(await api.runs());
-        const show = runToShow(submittedRef.current, next, finished);
-        if (show?.status === "done" && show.run_id) await openRun(show.run_id, false);
-        if (show?.status === "failed") setError(show.error);
-      } catch (e) {
-        fail(e);
+    const t = setInterval(() => {
+      for (const id of WINDOW_IDS) {
+        const w = popups.current[id];
+        if (w && w.closed) {
+          delete popups.current[id];
+          setLayout((l) => setPoppedOut(l, id, false));
+        }
       }
-    }, 800);
+    }, 1000);
     return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [anyActive]);
-  const refreshDataFiles = () => api.dataFiles().then(setDataFiles).catch(fail);
+  }, []);
 
-  // Describe the network whenever its name or parameters change.
-  const networkKey = spec ? JSON.stringify(spec.network) : "";
-  useEffect(() => {
-    if (!spec?.network.name) return;
-    const t = setTimeout(() => {
-      api.network(spec.network.name, spec.network.params)
-        .then((n) => {
-          setNetwork(n);
-          setSelected(null);
-          setViewSettings((v) => ({ ...v, depthUm: null }));
-          setError(null);
-        })
-        .catch(fail);
-    }, 250);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [networkKey]);
-
-  // A run is shown only on the network it was computed for.
-  const shownRun = run && spec && network && sameNetwork(run.spec, spec) ? run : null;
-  const options = useMemo(() => colorByOptions(shownRun, network?.graph), [shownRun, network]);
-  const activeColorBy = options.some((o) => colorByKey(o.value) === colorByKey(colorBy)) ? colorBy : { kind: "type" as const };
-  const view = useMemo(
-    () => (network ? computeView(network.graph, shownRun, activeColorBy) : null),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [network, shownRun, colorByKey(activeColorBy)],
-  );
-
-  async function runExperiment() {
-    if (!spec) return;
-    try {
-      const job = await api.submitJob(spec);
-      setJobs((prev) => [job, ...prev]);
-      setSubmitted((prev) => [...prev, job.id]);
-      setError(null);
-    } catch (e) {
-      fail(e);
-    }
-  }
-
-  async function cancelJob(id: string) {
-    try {
-      const job = await api.cancelJob(id);
-      setJobs((prev) => prev.map((j) => (j.id === id ? job : j)));
-    } catch (e) {
-      fail(e);
-    }
-  }
-
-  async function openRun(id: string, loadSpec = true) {
-    try {
-      const record = await api.getRun(id);
-      // Opening a past run loads its spec; a finished job keeps the spec being edited.
-      if (loadSpec) setSpec(record.spec);
-      setRun(record);
-      const first = Object.keys(record.summary)[0];
-      setColorBy(first ? { kind: "relflow", label: first } : { kind: "type" });
-    } catch (e) {
-      fail(e);
-    }
-  }
-
-  const highlighted = hover?.edge ?? rowHover ?? selected;
-  const visible = useMemo(
-    () => (network ? visibleEdges(network.graph, { hidden: viewSettings.hidden, depthUm: viewSettings.depthUm ?? undefined }) : []),
-    [network, viewSettings.hidden, viewSettings.depthUm],
-  );
-
-  function addSelectedTo(index: number | "new") {
-    if (!spec || selected === null) return;
-    setSpec({ ...spec, conditions: addEdgeToCondition(spec.conditions, index, selected) });
-  }
-  // Draw vessels at the diameters of the condition being shown.
-  const g = useMemo(() => {
-    if (!network) return undefined;
-    const label = "label" in activeColorBy ? activeColorBy.label : null;
-    const d = label && shownRun?.results[label]?.diameter;
-    return d ? { ...network.graph, diameter: d } : network.graph;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [network, shownRun, colorByKey(activeColorBy)]);
+  const open = (id: WinId) => setLayout((l) => openWindow(l, id, vp));
+  const popOut = (id: WinId) => {
+    const st = layout[id];
+    const w = window.open(`?window=${id}`, `neurovascularsim-${id}`, `popup,width=${Math.max(st.w, 640)},height=${Math.max(st.h, 480)}`);
+    if (!w) return; // blocked: stay in-app
+    popups.current[id] = w;
+    setLayout((l) => setPoppedOut(l, id, true));
+  };
+  const popIn = (id: WinId) => {
+    popups.current[id]?.close();
+    delete popups.current[id];
+    setLayout((l) => setPoppedOut(l, id, false));
+  };
+  const top = topWindow(layout);
 
   return (
-    <div className="app">
-      <header>
+    <div className="desktop-app">
+      <header className="dock">
         <h1>NeuroVascularSim</h1>
-        <span className="muted">{version && `engine ${version}`}</span>
+        <nav aria-label="Windows" className="dock-buttons">
+          {WINDOW_IDS.map((id) => {
+            const st = layout[id];
+            const showing = st.open && !st.minimized;
+            return (
+              <button
+                key={id}
+                type="button"
+                className={`dock-btn${showing ? " showing" : ""}${top === id ? " front" : ""}`}
+                aria-pressed={showing}
+                title={st.poppedOut ? "Opened in its own window" : showing ? "Bring to front" : "Open"}
+                onClick={() => (st.poppedOut ? popups.current[id]?.focus() : open(id))}
+              >
+                {WINDOW_TITLES[id]}
+                {st.poppedOut && <span aria-label="(popped out)"> ⇱</span>}
+                {id === "runs" && s.jobs.some((j) => j.status === "running" || j.status === "queued") && <span className="dot" aria-label="(jobs running)" />}
+              </button>
+            );
+          })}
+        </nav>
+        <span className="spacer" />
+        {s.error && <span className="error dock-error" role="alert" title={s.error}>{s.error}</span>}
+        <button type="button" className="ghost small reset-layout" onClick={() => setLayout(defaultLayout(vp))} title="Put the windows back where they started">
+          Reset layout
+        </button>
+        <span className="muted">{s.version && `engine ${s.version}`}</span>
       </header>
-
-      <aside>
-        <h2>Experiment</h2>
-        {plugins && spec ? (
-          <ExperimentEditor
-            plugins={plugins}
-            spec={spec}
-            onChange={setSpec}
-            onRun={runExperiment}
-            running={jobs.some((j) => submitted.includes(j.id) && jobActive(j))}
-            dataFiles={dataFiles}
-            onDataFilesChanged={refreshDataFiles}
-            models={models}
-          />
-        ) : (
-          <p className="muted">Connecting to the engine…</p>
+      <div className="desk" ref={desk}>
+        {WINDOW_IDS.map((id) => (
+          <FloatingWindow
+            key={id}
+            id={id}
+            title={WINDOW_TITLES[id]}
+            state={layout[id]}
+            viewport={vp}
+            narrow={narrow}
+            active={top === id}
+            onFocus={() => setLayout((l) => bringToFront(l, id))}
+            onMove={(x, y) => setLayout((l) => moveWindow(l, id, x, y, vp))}
+            onResize={(w, h) => setLayout((l) => resizeWindow(l, id, w, h, vp))}
+            onMinimize={() => setLayout((l) => toggleMinimize(l, id, vp))}
+            onMaximize={() => setLayout((l) => toggleMaximize(l, id, vp))}
+            onPopOut={() => popOut(id)}
+            onPopIn={() => popIn(id)}
+            onClose={() => (layout[id].poppedOut ? popIn(id) : setLayout((l) => closeWindow(l, id)))}
+          >
+            {content(id, s, open)}
+          </FloatingWindow>
+        ))}
+        {!WINDOW_IDS.some((id) => layout[id].open && !layout[id].minimized) && (
+          <p className="muted center">All windows are closed. Open one from the bar above.</p>
         )}
-        {error && <p className="error" role="alert">{error}</p>}
+      </div>
+    </div>
+  );
+}
 
-        <h2>Network statistics</h2>
-        {spec ? <StatsPanel network={spec.network} /> : null}
-
-        <h2>Jobs</h2>
-        <JobList jobs={jobs} onOpen={(id) => openRun(id)} onCancel={cancelJob} />
-
-        <h2>Runs</h2>
-        {runs.length === 0 ? (
-          <p className="muted">No runs yet.</p>
-        ) : (
-          <ul className="runs">
-            {runs.map((r) => (
-              <li key={r.id}>
-                <button className={run?.id === r.id ? "run active" : "run"} onClick={() => openRun(r.id)}>
-                  <span>{r.name}</span>
-                  <span className="muted">{r.created.replace("T", " ").replace("+00:00", " UTC")}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </aside>
-
-      <main>
-        <div className="toolbar">
-          <label className="inline">
-            Colour by
-            <select
-              value={colorByKey(activeColorBy)}
-              onChange={(e) => setColorBy(options.find((o) => colorByKey(o.value) === e.target.value)!.value)}
-            >
-              {options.map((o) => (
-                <option key={colorByKey(o.value)} value={colorByKey(o.value)}>{o.label}</option>
-              ))}
-            </select>
-          </label>
-          {network && <ViewControls graph={network.graph} view={viewSettings} onChange={setViewSettings} />}
-          {shownRun && (
-            <span className="muted">
-              run {shownRun.id} · {Object.values(shownRun.results).every((f) => f.converged) ? "converged" : "NOT converged"}
-            </span>
-          )}
-        </div>
-
-        <div className="stage">
-          {g && view ? (
-            <>
-              <Suspense fallback={<p className="muted center">Loading the 3D viewer…</p>}>
-              <NetworkView
-                graph={g}
-                colors={view.colors}
-                highlight={highlighted}
-                fade={hover || rowHover !== null ? 0.55 : 0.3}
-                visible={visible}
-                widthScale={viewSettings.widthScale}
-                onHover={(edge, x, y) => setHover(edge === null ? null : { edge, x, y })}
-                onPick={setSelected}
-              />
-              </Suspense>
-              <Legend legend={view.legend} />
-              {selected !== null && selected < g.n_edges && spec && (
-                <SelectionCard
-                  edge={selected}
-                  graph={g}
-                  run={shownRun}
-                  conditions={spec.conditions}
-                  onAddToCondition={addSelectedTo}
-                  onClose={() => setSelected(null)}
-                />
-              )}
-              {hover && (
-                <div className="tooltip" style={{ left: hover.x + 14, top: hover.y + 14 }} role="status">
-                  <strong>Vessel {hover.edge}</strong> · {SEGMENT_LABELS[g.vessel_type[hover.edge]] ?? g.vessel_type[hover.edge]}
-                  <div>D {fmt(toUm(g.diameter[hover.edge]))} µm · L {fmt(toUm(g.length[hover.edge]))} µm</div>
-                  {shownRun && (
-                    <>
-                      <div>Flow {fmt(toNlPerMin(shownRun.results.baseline.flow[hover.edge]))} nL/min · Hct {fmt(shownRun.results.baseline.hematocrit[hover.edge])}</div>
-                      {shownRun.results.baseline.po2 && (
-                        <div>PO2 {fmt(shownRun.results.baseline.po2[hover.edge])} mmHg · SO2 {fmt(100 * (shownRun.results.baseline.so2?.[hover.edge] ?? NaN))}%</div>
-                      )}
-                      {Object.entries(shownRun.summary).map(([label, s]) => (
-                        <div key={label}>{label}: {pct(s.relative_flow[hover.edge])}</div>
-                      ))}
-                    </>
-                  )}
-                </div>
-              )}
-            </>
-          ) : (
-            <p className="muted center">Loading network…</p>
-          )}
-        </div>
-
-        {network && (
-          <section className="bottom">
-            <div className="tabs" role="tablist">
-              <button role="tab" aria-selected={bottomTab === "vessels"} className={bottomTab === "vessels" ? "tab active" : "tab"}
-                onClick={() => setBottomTab("vessels")}>Vessels</button>
-              <button role="tab" aria-selected={bottomTab === "oxygen"} className={bottomTab === "oxygen" ? "tab active" : "tab"}
-                onClick={() => setBottomTab("oxygen")}>Oxygen &amp; BOLD</button>
-            </div>
-            {bottomTab === "vessels" ? (
-              <EdgeTable graph={network.graph} run={shownRun} selected={highlighted} onHover={setRowHover} onSelect={setSelected} />
-            ) : shownRun ? (
-              <OxygenPanel run={shownRun} />
-            ) : (
-              <p className="muted pad">Run an experiment with oxygen to see results here.</p>
-            )}
-          </section>
-        )}
-      </main>
+/** One view in its own browser window, synced with the main page. */
+function PoppedView({ id }: { id: WinId }) {
+  const s = useAppState();
+  const sendPopIn = useRef(s.sendPopIn);
+  sendPopIn.current = s.sendPopIn;
+  useEffect(() => {
+    document.title = `${WINDOW_TITLES[id]} · NeuroVascularSim`;
+    const bye = () => sendPopIn.current(id);
+    window.addEventListener("pagehide", bye);
+    return () => window.removeEventListener("pagehide", bye);
+  }, [id]);
+  return (
+    <div className="desktop-app popped-app">
+      <header className="dock">
+        <h1>NeuroVascularSim · {WINDOW_TITLES[id]}</h1>
+        <span className="spacer" />
+        {s.error && <span className="error dock-error" role="alert" title={s.error}>{s.error}</span>}
+        <button type="button" className="ghost small" onClick={() => { s.sendPopIn(id); window.close(); }}>
+          Return to the main window
+        </button>
+      </header>
+      <main className="popped-body">{content(id, s, () => {})}</main>
     </div>
   );
 }

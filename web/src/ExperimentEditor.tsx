@@ -36,7 +36,7 @@ export function defaultSolver(network: string): Record<string, unknown> {
 }
 
 /** A starting condition that makes sense for each kind of network. */
-function defaultConditions(network: string): Condition[] {
+export function defaultConditions(network: string): Condition[] {
   if (network === "suarez2021a") {
     return [{ label: "dilate_active_30pct", perturbations: [{ name: "scale_diameter", params: { edges: ["active_edge"], factor: 1.3 } }] }];
   }

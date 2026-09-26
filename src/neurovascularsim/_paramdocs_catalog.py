@@ -161,7 +161,7 @@ DOCS[_S] = {
                      f"{HILL_2015}; {GRANT_2019}"),
     "tissue_pressure_mmhg": P("Tissue pressure", "Pressure outside the vessels (intracranial pressure), subtracted "
                               "from blood pressure to give the transmural pressure used by structural "
-                              "adaptation.", "mmHg", _ADAPT, "basic", FEILER_2010),
+                              "adaptation.", "mmHg", _BC, "basic", FEILER_2010),
     # Randomness
     "seed": P("Random seed", "Seed of the random generator. The same seed gives the same network; different seeds "
               "give statistically equivalent columns.", "", _RAND, "basic", MODEL),

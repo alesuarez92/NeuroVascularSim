@@ -15,57 +15,50 @@ type Props = {
 /** One plugin parameter, with the input that fits its type. */
 export function ParamField({ name, value, def, choices, dataFiles, onChange, onUploaded }: Props) {
   const kind = paramKind(name, def, choices);
-  const v = value === undefined ? def : value;
   const label = paramLabel(name);
-
+  const input = <ParamInput name={name} value={value} def={def} choices={choices} dataFiles={dataFiles} onChange={onChange} onUploaded={onUploaded} />;
   if (kind === "boolean") {
     return (
       <label className="check">
-        <input type="checkbox" checked={Boolean(v)} onChange={(e) => onChange(e.target.checked)} />
+        {input}
         {label}
       </label>
     );
   }
-  if (kind === "choice") {
-    const opts = choices!;
-    return (
-      <label className="inline">
-        {label}
-        <select value={String(opts.findIndex((c) => c === v))} onChange={(e) => onChange(opts[Number(e.target.value)])}>
-          {opts.map((c, i) => (
-            <option key={i} value={i}>{String(c).replace(/_/g, " ")}</option>
-          ))}
-        </select>
-      </label>
-    );
-  }
-  if (kind === "number") {
-    return (
-      <label className="inline">
-        {label}
-        <NumberInput value={v as number} onChange={onChange} />
-      </label>
-    );
-  }
-  if (kind === "file") return <FileField label={label} value={String(v)} files={dataFiles} onChange={onChange} onUploaded={onUploaded} />;
-  if (kind === "text") {
-    return (
-      <label className="inline">
-        {label}
-        <input value={String(v ?? "")} onChange={(e) => onChange(e.target.value)} />
-      </label>
-    );
-  }
+  if (kind === "file") return <div className="file-field"><span className="file-label">{label}</span>{input}</div>;
   return (
     <label className="inline">
       {label}
-      <ListInput value={v} onChange={onChange} />
+      {input}
     </label>
   );
 }
 
+/** Just the input for a parameter (no label), for forms that lay out labels themselves. */
+export function ParamInput({ name, value, def, choices, dataFiles, onChange, onUploaded, id }: Props & { id?: string }) {
+  const kind = paramKind(name, def, choices);
+  const v = value === undefined ? def : value;
+  if (kind === "boolean") {
+    return <input id={id} type="checkbox" checked={Boolean(v)} onChange={(e) => onChange(e.target.checked)} />;
+  }
+  if (kind === "choice") {
+    const opts = choices!;
+    return (
+      <select id={id} value={String(opts.findIndex((c) => c === v))} onChange={(e) => onChange(opts[Number(e.target.value)])}>
+        {opts.map((c, i) => (
+          <option key={i} value={i}>{String(c).replace(/_/g, " ")}</option>
+        ))}
+      </select>
+    );
+  }
+  if (kind === "number") return <NumberInput id={id} value={v as number} onChange={onChange} />;
+  if (kind === "file") return <FileField id={id} value={String(v)} files={dataFiles} onChange={onChange} onUploaded={onUploaded} />;
+  if (kind === "text") return <input id={id} value={String(v ?? "")} onChange={(e) => onChange(e.target.value)} />;
+  return <ListInput id={id} value={v} onChange={onChange} />;
+}
+
 /** A number box that keeps what is typed until it parses (e.g. "0." or "-"). */
-function NumberInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+function NumberInput({ id, value, onChange }: { id?: string; value: number; onChange: (v: number) => void }) {
   const [text, setText] = useState(String(value));
   const editing = useRef(false);
   useEffect(() => {
@@ -73,6 +66,7 @@ function NumberInput({ value, onChange }: { value: number; onChange: (v: number)
   }, [value]);
   return (
     <input
+      id={id}
       type="number"
       step="any"
       value={text}
@@ -90,11 +84,12 @@ function NumberInput({ value, onChange }: { value: number; onChange: (v: number)
   );
 }
 
-function ListInput({ value, onChange }: { value: unknown; onChange: (v: unknown) => void }) {
+function ListInput({ id, value, onChange }: { id?: string; value: unknown; onChange: (v: unknown) => void }) {
   const [text, setText] = useState(formatList(value));
   useEffect(() => setText(formatList(value)), [value]);
   return (
     <input
+      id={id}
       placeholder="not set (comma-separated values)"
       value={text}
       onChange={(e) => setText(e.target.value)}
@@ -104,8 +99,8 @@ function ListInput({ value, onChange }: { value: unknown; onChange: (v: unknown)
   );
 }
 
-function FileField({ label, value, files, onChange, onUploaded }: {
-  label: string;
+function FileField({ id, value, files, onChange, onUploaded }: {
+  id?: string;
   value: string;
   files: DataFile[];
   onChange: (v: string) => void;
@@ -115,16 +110,13 @@ function FileField({ label, value, files, onChange, onUploaded }: {
   const [status, setStatus] = useState<string | null>(null);
   const names = files.map((f) => f.name);
   return (
-    <div className="file-field">
-      <label className="inline">
-        {label}
-        <select value={value} onChange={(e) => onChange(e.target.value)}>
-          {!names.includes(value) && <option value={value}>{value} (missing)</option>}
-          {names.map((n) => (
-            <option key={n} value={n}>{n}</option>
-          ))}
-        </select>
-      </label>
+    <div className="file-input">
+      <select id={id} value={value} onChange={(e) => onChange(e.target.value)}>
+        {!names.includes(value) && <option value={value}>{value} (missing)</option>}
+        {names.map((n) => (
+          <option key={n} value={n}>{n}</option>
+        ))}
+      </select>
       <div className="row">
         <button className="ghost" onClick={() => input.current?.click()}>Upload CSV…</button>
         {status && <span className="hint">{status}</span>}

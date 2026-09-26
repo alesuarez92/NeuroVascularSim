@@ -151,6 +151,19 @@ web/                React front end (after the service)
    switches, data files with upload), vessel width magnification,
    show/hide vessel classes, a depth slab, click a vessel for its details
    and add it to a condition, network statistics against measurements.
+   Windowed layout: in-app floating windows (Setup, Network, Results,
+   Runs & jobs) listed in a dock; they move, resize, minimize, maximize and
+   pop out into their own browser window (`?window=<id>`), kept in step over
+   a BroadcastChannel; the layout is remembered per browser. Setup is a
+   six-step wizard (network, blood and flow, boundary conditions, oxygen and
+   BOLD, conditions, review and run), each step with a plain-language
+   physiological introduction, a clickable schematic figure (cortical
+   column, blood in a capillary, oxygen transport, BOLD voxel) and the
+   parameters labelled from the engine's parameter docs (`/api/docs`: unit,
+   basic/advanced, source with DOI links, reset to default). Parameters and
+   perturbations have live mini-figures (tube widths, pressure gauge, column
+   box with layers, CMRO2 shading); condition presets; the review lists
+   what differs from the defaults and checks the spec before running.
 5. Realistic networks: synthetic mouse cortical columns validated against
    published statistics, a loader for reconstructed graphs (the Kleinfeld
    graphs via VesselGraph), depth and layer on every node, layer-selective

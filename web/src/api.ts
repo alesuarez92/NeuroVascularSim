@@ -6,6 +6,26 @@ export type PluginInfo = {
   reference: string;
   parameters: Record<string, unknown>;
   choices: Record<string, unknown[]>;
+  docs?: ParamDocs; // meaning, unit, group, level and source of each parameter (may be empty)
+};
+
+/** Documentation of one parameter (src/neurovascularsim/paramdocs.py). */
+export type ParamDoc = {
+  label: string;
+  help: string;
+  unit: string;
+  group: string;
+  level: "basic" | "advanced";
+  source: string;
+};
+
+export type ParamDocs = { groups: string[]; params: Record<string, ParamDoc> };
+
+/** Standard outputs of one solve for a whole column and its regions (vascular/summary.py). */
+export type MesoscopicSummary = {
+  resolution?: string;
+  column: Record<string, number | null>;
+  regions: Record<string, Record<string, number | null>>;
 };
 
 export type Plugins = Record<string, { contract: string; plugins: PluginInfo[] }>;
@@ -81,6 +101,7 @@ export type Fields = {
   so2?: number[];
   oxygen?: OxygenSummary;
   tissue_slice?: TissueSlice;
+  mesoscopic?: Record<string, MesoscopicSummary>; // by resolution: "column", "layer"
 };
 
 export type RunRecord = {
@@ -160,6 +181,7 @@ const post = <T,>(path: string, data: unknown) =>
 export const api = {
   health: () => request<{ status: string; version: string }>("/api/health"),
   plugins: () => request<Plugins>("/api/plugins"),
+  docs: () => request<Record<string, ParamDocs>>("/api/docs"),
   models: () => request<Record<"oxygen" | "bold", Record<string, unknown>>>("/api/models"),
   network: (name: string, params: Record<string, unknown>) =>
     post<NetworkResponse>("/api/networks", { name, params }),
