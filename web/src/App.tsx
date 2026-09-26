@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { Logo } from "./Logo";
 import { FloatingWindow } from "./FloatingWindow";
 import { NetworkWindow } from "./NetworkWindow";
 import { ResultsWindow, RunsWindow } from "./ResultsWindow";
@@ -148,7 +149,7 @@ function Desktop() {
   return (
     <div className="desktop-app">
       <header className="dock">
-        <h1>NeuroVascularSim</h1>
+        <h1><Logo />NeuroVascularSim</h1>
         <nav aria-label="Windows" className="dock-buttons">
           {WINDOW_IDS.map((id) => {
             const st = layout[id];
@@ -220,7 +221,7 @@ function PoppedView({ id }: { id: WinId }) {
   return (
     <div className="desktop-app popped-app">
       <header className="dock">
-        <h1>NeuroVascularSim · {WINDOW_TITLES[id]}</h1>
+        <h1><Logo />NeuroVascularSim · {WINDOW_TITLES[id]}</h1>
         <span className="spacer" />
         {s.error && <span className="error dock-error" role="alert" title={s.error}>{s.error}</span>}
         <button type="button" className="ghost small" onClick={() => { s.sendPopIn(id); window.close(); }}>

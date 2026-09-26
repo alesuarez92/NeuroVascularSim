@@ -219,7 +219,8 @@ html, body, #root { height: 100%; }
   display: flex; align-items: center; gap: 10px; padding: 0 12px;
   border-bottom: 1px solid var(--border); background: var(--surface); min-width: 0;
 }
-.dock h1 { white-space: nowrap; margin-right: 6px; }
+.dock h1 { white-space: nowrap; margin-right: 6px; display: flex; align-items: center; gap: 7px; }
+.dock h1 .logo { flex: none; }
 .dock .spacer { flex: 1; }
 .dock-buttons { display: flex; gap: 4px; overflow-x: auto; }
 .dock-btn {
