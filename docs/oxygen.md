@@ -110,6 +110,33 @@ extraction 0.13 and 7% hypoxic tissue, with red-cell flux nearly equal in
 layers 1–5 (see [networks.md](networks.md), structural adaptation). Most of
 the OEF gap closes; the arteriolar share does not.
 
+**Why arterioles release too little oxygen (investigation, adapted column,
+seed 0).** Measured the way Sakadžić 2014 defines it (saturation drop from
+the inlet to the precapillary arterioles, over the drop to the ascending
+venules), the model's arteriolar share is only 0.07: precapillary
+arterioles stay at PO2 93 mmHg (SO2 0.90), against 66 mmHg (SO2 0.78)
+measured under anaesthesia (Sakadžić 2014) and 84 mmHg in layer V
+arterioles of awake mice (Li 2019, whose awake arteriolar share is 34%).
+What does not explain it:
+- the intravascular mass transfer (Nusselt number 2.5 → 100 changes the
+  share from 0.15 to 0.15);
+- the tissue grid (10 → 6 µm voxels: unchanged);
+- a capillary-free sleeve of 53 µm around penetrating arterioles through
+  layers I–IV (Kasischke 2011; option `periarteriolar_free_radius_um`): the
+  share falls slightly (0.15 → 0.13, 0.13 → 0.10) and hypoxia rises, because
+  the sleeve is only ~7% of the tissue volume;
+- high oxygen use by the vessel wall, proposed by Tsai et al. 2003, was
+  attributed to a measurement artefact (Golub & Pittman 2008, 2011) and is
+  not used.
+Still open. Sources: Kasischke KA et al. 2011, *J Cereb Blood Flow Metab*
+31:68, [doi:10.1038/jcbfm.2010.158](https://doi.org/10.1038/jcbfm.2010.158);
+Tsai AG, Johnson PC, Intaglietta M 2003, *Physiol Rev* 83:933,
+[doi:10.1152/physrev.00034.2002](https://doi.org/10.1152/physrev.00034.2002);
+Golub AS, Pittman RN 2008, *Am J Physiol Heart* 294:H2905,
+[doi:10.1152/ajpheart.01347.2007](https://doi.org/10.1152/ajpheart.01347.2007);
+Golub AS, Pittman RN 2011, *Am J Physiol Heart* 301:H737,
+[doi:10.1152/ajpheart.00353.2011](https://doi.org/10.1152/ajpheart.00353.2011).
+
 These are properties of the synthetic network and the vessel wall model,
 not of the transport solver (which conserves oxygen and passes the limit
 tests). Running on a reconstructed network (the Kleinfeld graphs) is the
