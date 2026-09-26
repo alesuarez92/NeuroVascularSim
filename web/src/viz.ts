@@ -50,13 +50,13 @@ export function colorByOptions(run: RunRecord | null, graph?: Graph): { value: C
     opts.push({ value: { kind: "flow", label }, label: `Flow: ${label}` });
     opts.push({ value: { kind: "hematocrit", label }, label: `Hematocrit: ${label}` });
     if (run.results[label].po2) {
-      opts.push({ value: { kind: "po2", label }, label: `PO2: ${label}` });
-      opts.push({ value: { kind: "so2", label }, label: `SO2: ${label}` });
+      opts.push({ value: { kind: "po2", label }, label: `PO₂: ${label}` });
+      opts.push({ value: { kind: "so2", label }, label: `SO₂: ${label}` });
     }
   }
   for (const label of Object.keys(run.summary)) {
     if (run.results[label]?.so2 && run.results.baseline?.so2) {
-      opts.push({ value: { kind: "so2change", label }, label: `SO2 change: ${label}` });
+      opts.push({ value: { kind: "so2change", label }, label: `SO₂ change: ${label}` });
     }
   }
   return opts;
@@ -148,7 +148,7 @@ export function computeView(graph: Graph, run: RunRecord | null, by: ColorBy): {
     const limit = symmetricLimit([finite.length ? finite[Math.ceil(0.95 * finite.length) - 1] : 0]);
     return {
       colors: change.map((c) => diverging(c, limit)),
-      legend: { kind: "diverging", title: `SO2 change vs baseline (${by.label}), points`, limit, unit: "" },
+      legend: { kind: "diverging", title: `SO₂ change vs baseline (${by.label}), points`, limit, unit: "" },
     };
   }
   if (by.kind === "po2" || by.kind === "so2") {
@@ -159,7 +159,7 @@ export function computeView(graph: Graph, run: RunRecord | null, by: ColorBy): {
       colors: vals.map((v) => sequential(v / max)),
       legend: {
         kind: "sequential",
-        title: by.kind === "po2" ? `Vessel PO2 (${by.label})` : `Hemoglobin saturation (${by.label})`,
+        title: by.kind === "po2" ? `Vessel PO₂ (${by.label})` : `Hemoglobin saturation (${by.label})`,
         min: 0,
         max,
         unit: by.kind === "po2" ? "mmHg" : "%",

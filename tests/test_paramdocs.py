@@ -53,3 +53,22 @@ def test_mouse_column_group_order():
         "Column size", "Capillary bed", "Penetrating vessels", "Offshoots and connections",
         "Boundary conditions", "Blood", "Structural adaptation", "Randomness",
     ]
+
+
+def test_symbols_are_well_formed():
+    """Symbols use the small markup the web app renders: balanced "_{...}" / "^{...}" groups."""
+    import re
+
+    from neurovascularsim.paramdocs import DOCS, SYMBOLS
+
+    assert SYMBOLS
+    for scope, params in DOCS.items():
+        for name, doc in params.items():
+            s = doc.symbol
+            depth = 0
+            for ch in s:
+                depth += ch == "{"
+                depth -= ch == "}"
+                assert depth >= 0, (scope, name, s)
+            assert depth == 0, (scope, name, s)
+            assert not re.search(r"[_^](?!\{)", s), (scope, name, s)

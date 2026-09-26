@@ -240,7 +240,7 @@ describe("figure geometry", () => {
     expect(branchPositions(0, 0, 100)).toEqual([]);
     expect(trunkCounts(17.4, 3, 600, 600)).toEqual({ pa: 6, av: 18 });
   });
-  it("draws distributions, dilations, CMRO2 shading and saturation", () => {
+  it("draws distributions, dilations, CMRO₂ shading and saturation", () => {
     const d = normalCurvePath(4, 1, 10, 100, 50, 10);
     expect(d.startsWith("M0.0,")).toBe(true);
     expect(d.split(" ")).toHaveLength(11);

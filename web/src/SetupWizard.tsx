@@ -8,6 +8,7 @@ import { ColumnMini, DilationMini, PressureMini, miniFor } from "./diagrams/mini
 import { OxygenFigure } from "./diagrams/OxygenFigure";
 import { type FigureKind, networkFigure, regionOfGroup, regionOfParam } from "./diagrams/regions";
 import { DocField, HelpButton, Linked } from "./DocField";
+import { MathSymbol } from "./MathSymbol";
 import { ExperimentEditor, defaultConditions, defaultSolver } from "./ExperimentEditor";
 import { parseList } from "./params";
 import type { AppState } from "./state";
@@ -240,8 +241,8 @@ export function SetupWizard({ s, onShowResults, onShowNetwork }: Props) {
       <Step
         intro={
           <p>
-            Blood moves because the pressure where it enters (the arterial side, <b>p_in</b>) is higher than where it
-            leaves (the venous side, <b>p_out</b>); the network's resistance sets how much flows for that difference.
+            Blood moves because the pressure where it enters (the arterial side, <b><MathSymbol symbol="P_{in}" /></b>) is higher than where it
+            leaves (the venous side, <b><MathSymbol symbol="P_{out}" /></b>); the network's resistance sets how much flows for that difference.
             Outside the vessels, the <b>tissue pressure</b> (intracranial pressure, ICP) pushes on the walls. Pressures
             are fixed at the network's open ends.
           </p>
@@ -279,7 +280,7 @@ export function SetupWizard({ s, onShowResults, onShowNetwork }: Props) {
         intro={
           <p>
             Red cells carry oxygen bound to hemoglobin. Along the capillaries it is released, diffuses through the wall
-            and is consumed by the tissue (<b>CMRO2</b>, the cerebral metabolic rate of oxygen). The BOLD fMRI signal
+            and is consumed by the tissue (<b>CMRO₂</b>, the cerebral metabolic rate of oxygen). The BOLD fMRI signal
             follows from where the deoxygenated hemoglobin ends up: it is paramagnetic and dephases the MR signal
             around vessels, read at the echo time <b>TE</b>. Both are optional and run after the flow solution.
           </p>
@@ -469,7 +470,7 @@ function ConditionsStep({ s, spec, plugins, netValues }: { s: AppState; spec: Ex
           <p>
             A <b>condition</b> changes the network or the tissue and is compared with the unchanged <b>baseline</b>.
             Widening arterioles mimics functional hyperaemia; narrowing capillaries mimics pericyte constriction; raising
-            CMRO2 in a layer mimics stronger neural activity there. Each change can be limited to vessel classes, to
+            CMRO₂ in a layer mimics stronger neural activity there. Each change can be limited to vessel classes, to
             cortical layers, to a depth range, or to chosen vessels.
           </p>
         </>
@@ -528,7 +529,7 @@ function ConditionsStep({ s, spec, plugins, netValues }: { s: AppState; spec: Ex
             {perturbations.some((x) => x.name === "scale_cmro2") && (
               <button type="button" className="ghost small" disabled={spec.oxygen == null} title={spec.oxygen == null ? "Turn on oxygen in step 4 first" : undefined}
                 onClick={() => setCondition(i, { ...c, perturbations: [...c.perturbations, { name: "scale_cmro2", params: { factor: 1.1, layers: [], depth_range_um: null } }] })}>
-                + CMRO2 change
+                + CMRO₂ change
               </button>
             )}
           </div>
@@ -577,7 +578,14 @@ function PerturbationEditor({ p, plugins, docs, kinds, hasLayers, hasDepth, dept
   };
   const label = (name: string, fallback: string) => {
     const r = resolveDoc(name, pDocs);
-    return r.documented ? r.doc.label : fallback;
+    if (!r.documented) return fallback;
+    return (
+      <>
+        {r.doc.label}
+        {r.doc.symbol && <> <MathSymbol symbol={r.doc.symbol} /></>}
+        {r.doc.unit && <span className="unit"> ({r.doc.unit})</span>}
+      </>
+    );
   };
   const column = (
     <ColumnMini
@@ -608,7 +616,7 @@ function PerturbationEditor({ p, plugins, docs, kinds, hasLayers, hasDepth, dept
         <select aria-label="Kind of change" value={p.name} onChange={(e) => onChange({ name: e.target.value, params: { ...(plugins.perturbation?.plugins.find((x) => x.name === e.target.value)?.parameters ?? {}) } })}>
           {kinds.map((k) => (
             <option key={k} value={k} disabled={k === "scale_cmro2" && !oxygen}>
-              {k === "scale_diameter" ? "Diameter change" : k === "scale_cmro2" ? "CMRO2 change" : k}
+              {k === "scale_diameter" ? "Diameter change" : k === "scale_cmro2" ? "CMRO₂ change" : k}
             </option>
           ))}
         </select>
@@ -618,7 +626,7 @@ function PerturbationEditor({ p, plugins, docs, kinds, hasLayers, hasDepth, dept
       <div className="perturbation-grid">
         <div className="perturbation-fields">
           <div className="pf-row">
-            <label htmlFor={`f-${p.name}`}>{label("factor", isCmro2 ? "CMRO2 factor" : "Diameter factor")}</label>
+            <label htmlFor={`f-${p.name}`}>{label("factor", isCmro2 ? "CMRO₂ factor" : "Diameter factor")}</label>
             <input
               id={`f-${p.name}`}
               type="range"
@@ -661,7 +669,7 @@ function PerturbationEditor({ p, plugins, docs, kinds, hasLayers, hasDepth, dept
           )}
           {hasDepth && (
             <div className="pf-row three">
-              <span className="pf-label">{label("depth_range_um", "Depth range")} (µm)</span>
+              <span className="pf-label">{label("depth_range_um", "Depth range (µm)")}</span>
               <DepthRange value={range} max={depthUm} onChange={(r) => set({ depth_range_um: r })} />
               {help("depth_range_um", column)}
             </div>
@@ -797,6 +805,7 @@ function ReviewStep({ s, spec, plugins, onShowResults }: { s: AppState; spec: Ex
           dataFiles={s.dataFiles}
           onDataFilesChanged={s.refreshDataFiles}
           models={s.models}
+          docs={s.docs}
         />
       </details>
     </div>

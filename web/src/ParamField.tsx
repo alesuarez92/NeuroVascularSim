@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { api, type DataFile } from "./api";
+import { api, type DataFile, type ParamDoc } from "./api";
+import { MathSymbol } from "./MathSymbol";
+import { needsPowerOfTen, powerOfTen } from "./notation";
 import { formatList, paramKind, paramLabel, parseList } from "./params";
 
 type Props = {
@@ -10,12 +12,21 @@ type Props = {
   dataFiles: DataFile[];
   onChange: (value: unknown) => void;
   onUploaded: () => void;
+  doc?: ParamDoc; // when documented: its label, symbol and unit instead of the code name
 };
 
 /** One plugin parameter, with the input that fits its type. */
-export function ParamField({ name, value, def, choices, dataFiles, onChange, onUploaded }: Props) {
+export function ParamField({ name, value, def, choices, dataFiles, onChange, onUploaded, doc }: Props) {
   const kind = paramKind(name, def, choices);
-  const label = paramLabel(name);
+  const label = doc ? (
+    <span title={name}>
+      {doc.label}
+      {doc.symbol && <> <MathSymbol symbol={doc.symbol} /></>}
+      {doc.unit && <span className="unit"> ({doc.unit})</span>}
+    </span>
+  ) : (
+    paramLabel(name)
+  );
   const input = <ParamInput name={name} value={value} def={def} choices={choices} dataFiles={dataFiles} onChange={onChange} onUploaded={onUploaded} />;
   if (kind === "boolean") {
     return (
@@ -64,7 +75,7 @@ function NumberInput({ id, value, onChange }: { id?: string; value: number; onCh
   useEffect(() => {
     if (!editing.current) setText(String(value)); // changed elsewhere, e.g. a new network
   }, [value]);
-  return (
+  const input = (
     <input
       id={id}
       type="number"
@@ -81,6 +92,13 @@ function NumberInput({ id, value, onChange }: { id?: string; value: number; onCh
         if (e.target.value.trim() !== "" && Number.isFinite(x)) onChange(x);
       }}
     />
+  );
+  if (!needsPowerOfTen(value)) return input;
+  return (
+    <span className="number-with-reading">
+      {input}
+      <span className="power-reading" aria-hidden="true">= {powerOfTen(value, 4)}</span>
+    </span>
   );
 }
 

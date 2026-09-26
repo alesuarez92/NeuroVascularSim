@@ -22,7 +22,7 @@ export function conditionParts(c: Condition): { diameter: DiameterParams; cmro2:
   };
 }
 
-/** Perturbations for a condition: the diameter change, then the CMRO2 change on the same region. */
+/** Perturbations for a condition: the diameter change, then the CMRO₂ change on the same region. */
 export function buildCondition(c: Condition, diameter: DiameterParams, cmro2: number | null): Condition {
   const { other } = conditionParts(c);
   const perturbations: Component[] = [{ name: "scale_diameter", params: { ...diameter } }];

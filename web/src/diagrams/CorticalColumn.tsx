@@ -1,3 +1,4 @@
+import { SvgSymbol } from "../MathSymbol";
 import { Figure, Region, type RegionProps } from "./Figure";
 import { layerBands } from "./geometry";
 
@@ -110,8 +111,8 @@ export function CorticalColumn({ depthUm = 1200, sizeXUm, layers = [], highlight
         <rect x={PA_X - 26} y={2} width={52} height={24} rx={5} className="hit" />
         <rect x={AV_X - 26} y={2} width={52} height={24} rx={5} className="hit" />
         <rect x={X0 + 1} y={bottom - 26} width={52} height={22} rx={5} className="hit" />
-        <text x={PA_X} y={19} className="f-strong f-art-text" textAnchor="middle">p_in ↓</text>
-        <text x={AV_X} y={19} className="f-strong f-ven-text" textAnchor="middle">p_out ↑</text>
+        <text x={PA_X} y={19} className="f-strong f-art-text" textAnchor="middle"><SvgSymbol symbol="P_{in}" /> ↓</text>
+        <text x={AV_X} y={19} className="f-strong f-ven-text" textAnchor="middle"><SvgSymbol symbol="P_{out}" /> ↑</text>
         <text x={X0 + 27} y={bottom - 11} className="f-small" textAnchor="middle">ICP</text>
       </Region>
 

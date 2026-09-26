@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { DataFile, ParamDoc } from "./api";
+import { MathSymbol } from "./MathSymbol";
 import { ParamInput } from "./ParamField";
 import { type Field, firstSentence, formatValue, isChanged, linkify } from "./wizard";
 
@@ -56,6 +57,7 @@ export function DocField({ field, value, onChange, dataFiles, onUploaded, mini, 
         <label htmlFor={id} className="df-label">
           {changed && <span className="changed-dot" aria-label="changed from default" title="Changed from default" />}
           {doc.label}
+          {doc.symbol && <> <MathSymbol symbol={doc.symbol} /></>}
           {doc.unit && <span className="unit"> ({doc.unit})</span>}
         </label>
         <div className="df-input">

@@ -3,7 +3,7 @@ import { SEQUENTIAL, sequential } from "./colors";
 import type { TissueSlice } from "./api";
 import { fmt } from "./units";
 
-/** Tissue PO2 in the mid-plane of the column (x across, depth down), with hover readout. */
+/** Tissue PO₂ in the mid-plane of the column (x across, depth down), with hover readout. */
 export function SliceMap({ slice, max = 100 }: { slice: TissueSlice; max?: number }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(null);
@@ -32,11 +32,11 @@ export function SliceMap({ slice, max = 100 }: { slice: TissueSlice; max?: numbe
 
   return (
     <figure className="slice">
-      <figcaption><span className="chart-title">Tissue PO2, mid-plane (pia at top)</span></figcaption>
+      <figcaption><span className="chart-title">Tissue PO₂, mid-plane (pia at top)</span></figcaption>
       <div className="slice-wrap">
         <canvas
           ref={canvas}
-          aria-label="Tissue PO2 map"
+          aria-label="Tissue PO₂ map"
           style={{ aspectRatio: `${cols} / ${rows}` }}
           onPointerMove={(e) => {
             const r = e.currentTarget.getBoundingClientRect();

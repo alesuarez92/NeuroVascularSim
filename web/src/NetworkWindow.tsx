@@ -79,7 +79,7 @@ export function NetworkWindow({ s }: { s: AppState }) {
                     <>
                       <div>Flow {fmt(toNlPerMin(shownRun.results.baseline.flow[hover.edge]))} nL/min · Hct {fmt(shownRun.results.baseline.hematocrit[hover.edge])}</div>
                       {shownRun.results.baseline.po2 && (
-                        <div>PO2 {fmt(shownRun.results.baseline.po2[hover.edge])} mmHg · SO2 {fmt(100 * (shownRun.results.baseline.so2?.[hover.edge] ?? NaN))}%</div>
+                        <div>PO₂ {fmt(shownRun.results.baseline.po2[hover.edge])} mmHg · SO₂ {fmt(100 * (shownRun.results.baseline.so2?.[hover.edge] ?? NaN))}%</div>
                       )}
                       {Object.entries(shownRun.summary).map(([label, sm]) => (
                         <div key={label}>{label}: {pct(sm.relative_flow[hover.edge])}</div>

@@ -44,8 +44,8 @@ export function OxygenPanel({ run }: { run: RunRecord }) {
               <th>Condition</th>
               <th className="num">OEF</th>
               <th className="num">Extracted by arterioles</th>
-              <th className="num">CMRO2 (µmol/g/min)</th>
-              <th className="num">Tissue PO2 mean / p10 (mmHg)</th>
+              <th className="num">CMRO₂ (µmol/g/min)</th>
+              <th className="num">Tissue PO₂ mean / p10 (mmHg)</th>
               <th className="num">Hypoxic tissue (&lt;10 mmHg)</th>
               <th className="num">BOLD, column</th>
               <th className="num">O2 balance</th>
@@ -77,7 +77,7 @@ export function OxygenPanel({ run }: { run: RunRecord }) {
       </div>
       <div className="charts">
         {tissueSeries.length > 0 && (
-          <ProfileChart title="Tissue PO2 by depth" unit="mmHg" depth={tissueSeries[0] ? run.results.baseline.oxygen!.depth_profile!.depth_um : []} series={tissueSeries} />
+          <ProfileChart title="Tissue PO₂ by depth" unit="mmHg" depth={tissueSeries[0] ? run.results.baseline.oxygen!.depth_profile!.depth_um : []} series={tissueSeries} />
         )}
         {bold0 && boldSeries.length > 0 && (
           <ProfileChart

@@ -85,7 +85,7 @@ DOCS[_S] = {
     # Penetrating vessels
     "pa_density_per_mm2": P("Penetrating arteriole density", "Number of penetrating arterioles entering the cortex "
                             "per surface area (mouse sensory cortex). They are the only arterial inflows to the "
-                            "column.", "per mm²", _PEN, "advanced", ADAMS_2018),
+                            "column.", "mm⁻²", _PEN, "advanced", ADAMS_2018),
     "av_to_pa_ratio": P("Venules per arteriole", "Number of ascending venules per penetrating arteriole; venules "
                         "drain the column to the surface.", "", _PEN, "advanced", BLINDER_2013),
     "pa_diameter_median_um": P("Arteriole diameter (median)", "Median diameter of penetrating arterioles where they "
@@ -146,7 +146,7 @@ DOCS[_S] = {
                      ALBERDING_2021),
     "adapt_metabolic_signal": P("Metabolic signal", "Uniform metabolic signal added per µm of vessel; it makes "
                                 "low-flow vessels grow. Calibrated so adapted capillary diameters match 4.0 ± 1.0 "
-                                "µm.", "per µm", _ADAPT, "advanced", "calibrated to " + SCHMID_2017),
+                                "µm.", "µm⁻¹", _ADAPT, "advanced", "calibrated to " + SCHMID_2017),
     "adapt_metabolic_source": P("Metabolic signal source", "\"uniform\": the uniform signal above. \"oxygen\": "
                                 "the published mechanism, a growth factor released by hypoxic tissue (half-maximal "
                                 "at 40 mmHg), diffusing with a 50 µm decay length; each vessel's signal is the "
@@ -154,7 +154,7 @@ DOCS[_S] = {
                                 _ADAPT, "advanced", ALBERDING_2021 + "; growth-factor values fitted by the authors, "
                                 "not measured"),
     "adapt_gf_permeability": P("Growth-factor uptake", "Metabolic signal per µm of vessel per unit growth-factor "
-                               "concentration (oxygen source only).", "per µm", _ADAPT, "advanced",
+                               "concentration (oxygen source only).", "µm⁻¹", _ADAPT, "advanced",
                                ALBERDING_2021 + " (k_GF = 1, arbitrary units)"),
     "adapt_oxygen_update_steps": P("Oxygen update interval", "Adaptation steps between oxygen solves (oxygen source "
                                    "only). Smaller is more accurate and slower.", "steps", _ADAPT, "advanced", MODEL),
@@ -255,7 +255,7 @@ DOCS[_S] = {
 _S = "perturbation/scale_cmro2"
 GROUPS[_S] = ["Change", "Selection"]
 DOCS[_S] = {
-    "factor": P("CMRO2 factor", "Multiplies tissue oxygen consumption, e.g. above 1 for neuronal activation. Used "
+    "factor": P("CMRO₂ factor", "Multiplies tissue oxygen consumption, e.g. above 1 for neuronal activation. Used "
                 "by the oxygen model.", "", "Change", "basic", MODEL),
     "depth_range_um": P("Depth range", "Only tissue in [low, high] depth below the pia; empty means everywhere.",
                         "µm", "Selection", "basic", ""),
@@ -276,9 +276,9 @@ _S = "model/oxygen"
 _BOX, _TIS, _NUM = "Blood oxygen", "Tissue", "Numerics"
 GROUPS[_S] = [_BOX, _TIS, _NUM]
 DOCS[_S] = {
-    "inlet_po2_mmhg": P("Arterial PO2", "Oxygen partial pressure of blood entering the pial arterioles.", "mmHg",
+    "inlet_po2_mmhg": P("Arterial PO₂", "Oxygen partial pressure of blood entering the pial arterioles.", "mmHg",
                         _BOX, "basic", SAKADZIC_2014),
-    "p50_mmhg": P("P50", "PO2 at which hemoglobin is half saturated (C57BL/6 mice). Higher P50 releases oxygen "
+    "p50_mmhg": P("Half-saturation PO₂", "PO₂ at which hemoglobin is half saturated (C57BL/6 mice). Higher P50 releases oxygen "
                   "more easily.", "mmHg", _BOX, "advanced", SAKADZIC_2014),
     "hill_n": P("Hill coefficient", "Steepness of the hemoglobin dissociation curve (C57BL/6 mice).", "", _BOX,
                 "advanced", SAKADZIC_2014),
@@ -286,24 +286,24 @@ DOCS[_S] = {
                         "hematocrit it sets how much oxygen blood carries.", "mM", _BOX, "advanced", LUCKER_2018),
     "nusselt": P("Nusselt number", "Sets the intravascular resistance to oxygen transfer through the vessel wall. "
                  "Higher values let oxygen leave the blood more easily.", "", _BOX, "advanced", ASSUMPTION),
-    "cmro2_umol_per_g_min": P("CMRO2", "Maximal tissue oxygen consumption rate. Higher consumption lowers tissue "
-                              "and venous PO2.", "µmol/g/min", _TIS, "basic",
+    "cmro2_umol_per_g_min": P("Oxygen consumption", "Maximal tissue oxygen consumption rate. Higher consumption lowers tissue "
+                              "and venous PO₂.", "µmol/g/min", _TIS, "basic",
                               "measured with 17O-MRS in mouse cortex: Zhu XH et al. 2013, NeuroImage 64:437, "
                               "doi:10.1016/j.neuroimage.2012.09.028"),
-    "km_mmhg": P("Michaelis-Menten Km", "Tissue PO2 at which consumption is half maximal; below it consumption "
+    "km_mmhg": P("Michaelis-Menten constant", "Tissue PO₂ at which consumption is half maximal; below it consumption "
                  "falls. Measured values in muscle are higher (5-10 mmHg; Golub & Pittman 2012).", "mmHg", _TIS,
                  "advanced", f"{GAGNON_2016}; {GOLUB_2012}"),
-    "tissue_density_g_per_ml": P("Tissue density", "Converts CMRO2 from per gram to per volume of tissue.", "g/mL",
+    "tissue_density_g_per_ml": P("Tissue density", "Converts CMRO₂ from per gram to per volume of tissue.", "g/mL",
                                  _TIS, "advanced", ASSUMPTION),
-    "alpha_uM_per_mmhg": P("O2 solubility", "Dissolved oxygen per mmHg of PO2, one value for plasma and tissue.",
+    "alpha_uM_per_mmhg": P("O₂ solubility", "Dissolved oxygen per mmHg of PO₂, one value for plasma and tissue.",
                            "µM/mmHg", _TIS, "advanced", FANG_2008),
-    "diffusivity_m2_per_s": P("O2 diffusivity", "Diffusion coefficient of oxygen in tissue; higher values spread "
+    "diffusivity_m2_per_s": P("O₂ diffusivity", "Diffusion coefficient of oxygen in tissue; higher values spread "
                               "oxygen farther from vessels.", "m²/s", _TIS, "advanced", FANG_2008),
     "voxel_um": P("Tissue voxel size", "Grid spacing of the tissue oxygen field. Smaller voxels are more accurate "
                   "and slower.", "µm", _NUM, "advanced", MODEL),
     "sample_um": P("Vessel step length", "Length of the steps along each vessel for the blood oxygen march.", "µm",
                    _NUM, "advanced", MODEL),
-    "tol_mmhg": P("Tolerance", "Iteration stops when tissue PO2 changes less than this.", "mmHg", _NUM, "advanced",
+    "tol_mmhg": P("Tolerance", "Iteration stops when tissue PO₂ changes less than this.", "mmHg", _NUM, "advanced",
                   MODEL),
     "max_iter": P("Maximum iterations", "Upper limit on blood-tissue iterations.", "", _NUM, "advanced", MODEL),
     "relaxation": P("Relaxation", "Mixing factor of the (Anderson-accelerated) tissue iteration; lower values are "
@@ -318,13 +318,13 @@ DOCS[_S] = {
     "field_t": P("Field strength", "Magnetic field of the scanner. The extravascular frequency offset scales with "
                  "it; r0 and epsilon are not scaled and must be set for other fields.", "T", _FS, "basic",
                  f"{OBATA_2004}; {STEPHAN_2007}"),
-    "te_ms": P("Echo time (TE)", "Gradient-echo echo time at which the signal is read; longer TE gives more "
+    "te_ms": P("Echo time", "Gradient-echo echo time at which the signal is read; longer TE gives more "
                "sensitivity to deoxygenated blood.", "ms", _FS, "basic", f"{OBATA_2004}; {STEPHAN_2007}"),
     "theta0_per_s_at_1p5t": P("Frequency offset at 1.5 T", "Frequency offset at the surface of a vessel of fully "
-                              "deoxygenated blood at 1.5 T (scaled with field strength).", "1/s", _VS, "advanced",
+                              "deoxygenated blood at 1.5 T (scaled with field strength).", "s⁻¹", _VS, "advanced",
                               f"{OBATA_2004} (via {STEPHAN_2007})"),
     "r0_per_s": P("Intravascular r0", "Slope of intravascular R2* against (1 - saturation), at 1.5 T; set it for "
-                  "other fields.", "1/s", _VS, "advanced", OBATA_2004),
+                  "other fields.", "s⁻¹", _VS, "advanced", OBATA_2004),
     "epsilon": P("Intra/extravascular signal ratio", "Ratio of intravascular to extravascular signal at rest; "
                  "poorly known and best treated as free.", "", _VS, "advanced",
                  STEPHAN_2007 + " (prior mean)"),

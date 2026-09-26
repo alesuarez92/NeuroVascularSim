@@ -1,3 +1,4 @@
+import { SvgSymbol } from "../MathSymbol";
 import { Figure, Region, type RegionProps } from "./Figure";
 import { scale } from "./geometry";
 
@@ -30,7 +31,7 @@ export function BoldFigure({ values = {}, highlight, onSelect, onHover }: Props)
       <Region id="field" label="Scanner field: show field strength and relaxation constants" {...r}>
         <rect x={4} y={10} width={30} height={170} rx={5} className="hit" />
         <line x1={18} x2={18} y1={170} y2={24} className="f-arrow f-strong-line" markerEnd="url(#boldhead)" />
-        <text x={18} y={188} className="f-small" textAnchor="middle">B0{field !== null ? ` ${field} T` : ""}</text>
+        <text x={18} y={188} className="f-small" textAnchor="middle"><SvgSymbol symbol="B_{0}" />{field !== null ? ` ${field} T` : ""}</text>
       </Region>
       <Region id="slab" label="Voxel: show the slab thickness" {...r}>
         <rect x={40} y={14} width={150} height={160} rx={6} className="hit" />

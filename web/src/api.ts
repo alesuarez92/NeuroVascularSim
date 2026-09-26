@@ -17,6 +17,7 @@ export type ParamDoc = {
   group: string;
   level: "basic" | "advanced";
   source: string;
+  symbol?: string; // mathematical symbol in a small markup ("P_{in}", "τ_{ref}"); see notation.ts
 };
 
 export type ParamDocs = { groups: string[]; params: Record<string, ParamDoc> };

@@ -1,3 +1,4 @@
+import { SvgSymbol } from "../MathSymbol";
 // Small live figures for single parameters: each redraws as the value
 // changes (a tube for a diameter, a gauge for pressures, a column box for
 // the column size...). Geometry comes from geometry.ts.
@@ -69,9 +70,9 @@ export function PressureMini({ pin, pout, icp }: { pin: number | null; pout: num
   const w = 180;
   const x = (v: number) => 10 + gaugeX(v, max, w);
   const marks = [
-    { v: pin, label: "p_in", cls: "f-small f-art-text", y: 14 },
-    { v: pout, label: "p_out", cls: "f-small f-ven-text", y: 14 },
-    { v: icp, label: "ICP", cls: "f-small", y: 50 },
+    { v: pin, label: "P_{in}", cls: "f-small f-art-text", y: 14 },
+    { v: pout, label: "P_{out}", cls: "f-small f-ven-text", y: 14 },
+    { v: icp, label: "P_{t}", cls: "f-small", y: 50 },
   ].filter((m) => m.v !== null) as { v: number; label: string; cls: string; y: number }[];
   return (
     <Figure title="Pressures" desc={`Inflow ${pin ?? "?"} mmHg, outflow ${pout ?? "?"} mmHg, tissue ${icp ?? "?"} mmHg, on a 0 to ${Math.round(max)} mmHg scale.`} viewBox={`0 0 ${W} 70`} className="mini">
@@ -82,7 +83,7 @@ export function PressureMini({ pin, pout, icp }: { pin: number | null; pout: num
       {marks.map((m) => (
         <g key={m.label}>
           <line x1={x(m.v)} x2={x(m.v)} y1={24} y2={46} className="f-marker" />
-          <text x={x(m.v)} y={m.y + 6} className={m.cls} textAnchor="middle">{m.label} {m.v}</text>
+          <text x={x(m.v)} y={m.y + 6} className={m.cls} textAnchor="middle"><SvgSymbol symbol={m.label} /> {m.v}</text>
         </g>
       ))}
       <text x={190} y={66} className="f-tiny" textAnchor="end">scale 0–{Math.round(max)} mmHg</text>
@@ -103,7 +104,7 @@ export function HematocritMini({ hematocrit }: { hematocrit: number }) {
   );
 }
 
-/** A column box at its proportions, with layers and optional overlays (layers, a depth range, CMRO2 shading). */
+/** A column box at its proportions, with layers and optional overlays (layers, a depth range, CMRO₂ shading). */
 export function ColumnMini({ sizeXUm, depthUm, layers = [], depthRange, cmro2, title = "Column" }: {
   sizeXUm: number;
   depthUm: number;
@@ -209,7 +210,7 @@ export function SaturationMini({ po2, p50, n }: { po2: number; p50: number; n: n
       <text x={x + 6} y={y + 12} className="f-small">{Math.round(s * 100)}%</text>
       <text x={20} y={84} className="f-tiny">0</text>
       <text x={20 + w} y={84} className="f-tiny" textAnchor="end">{pMax} mmHg</text>
-      <text x={16} y={14} className="f-tiny" textAnchor="end">SO2</text>
+      <text x={16} y={14} className="f-tiny" textAnchor="end">SO₂</text>
     </Figure>
   );
 }

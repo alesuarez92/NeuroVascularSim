@@ -1,3 +1,4 @@
+import { SvgSymbol } from "../MathSymbol";
 import { Figure, Region, type RegionProps } from "./Figure";
 import { tubeWidth } from "./geometry";
 
@@ -41,9 +42,9 @@ export function Bifurcation({ values = {}, activeFactor = 1, highlight, onSelect
         <rect x={2} y={86} width={40} height={28} rx={5} className="hit" />
         <rect x={294} y={30} width={44} height={28} rx={5} className="hit" />
         <rect x={294} y={142} width={44} height={28} rx={5} className="hit" />
-        <text x={22} y={104} className="f-strong f-art-text" textAnchor="middle">p_in</text>
-        <text x={316} y={48} className="f-strong" textAnchor="middle">p_out</text>
-        <text x={316} y={160} className="f-strong" textAnchor="middle">p_out</text>
+        <text x={22} y={104} className="f-strong f-art-text" textAnchor="middle"><SvgSymbol symbol="P_{in}" /></text>
+        <text x={316} y={48} className="f-strong" textAnchor="middle"><SvgSymbol symbol="P_{out}" /></text>
+        <text x={316} y={160} className="f-strong" textAnchor="middle"><SvgSymbol symbol="P_{out}" /></text>
       </Region>
     </Figure>
   );

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { Condition, DataFile, ExperimentSpec, Plugins } from "./api";
+import type { Condition, DataFile, ExperimentSpec, ParamDocs, Plugins } from "./api";
 import { ParamField } from "./ParamField";
 import { parseList } from "./params";
 import { buildCondition, conditionParts } from "./conditions";
@@ -13,6 +13,7 @@ type Props = {
   dataFiles: DataFile[];
   onDataFilesChanged: () => void;
   models: Record<"oxygen" | "bold", Record<string, unknown>> | null;
+  docs?: Record<string, ParamDocs>; // parameter docs by scope, for labels, symbols and units
 };
 
 const VESSEL_TYPES = [
@@ -61,7 +62,7 @@ function parseTargets(text: string): (string | number)[] {
  * models, and the conditions compared with the baseline. The JSON view edits
  * the full spec, for anything the form does not cover.
  */
-export function ExperimentEditor({ plugins, spec, onChange, onRun, running, dataFiles, onDataFilesChanged, models }: Props) {
+export function ExperimentEditor({ plugins, spec, onChange, onRun, running, dataFiles, onDataFilesChanged, models, docs = {} }: Props) {
   const networks = plugins.network?.plugins ?? [];
   const net = networks.find((p) => p.name === spec.network.name);
   const set = (patch: Partial<ExperimentSpec>) => onChange({ ...spec, ...patch });
@@ -110,6 +111,7 @@ export function ExperimentEditor({ plugins, spec, onChange, onRun, running, data
             def={def}
             value={spec.network.params[key]}
             choices={net?.choices?.[key]}
+            doc={(net?.docs ?? docs[`network/${spec.network.name}`])?.params?.[key]}
             dataFiles={dataFiles}
             onUploaded={onDataFilesChanged}
             onChange={(v) => set({ network: { ...spec.network, params: { ...spec.network.params, [key]: v } } })}
@@ -170,6 +172,7 @@ export function ExperimentEditor({ plugins, spec, onChange, onRun, running, data
                     name={name}
                     def={def}
                     value={(spec[key] as Record<string, unknown>)[name]}
+                    doc={docs[`model/${key}`]?.params?.[name]}
                     dataFiles={dataFiles}
                     onUploaded={onDataFilesChanged}
                     onChange={(v) => set({ [key]: { ...(spec[key] as Record<string, unknown>), [name]: v } })}
@@ -258,7 +261,7 @@ export function ExperimentEditor({ plugins, spec, onChange, onRun, running, data
               </label>
               {spec.oxygen != null && (
                 <label className="inline">
-                  CMRO2 factor
+                  CMRO₂ factor
                   <input
                     type="number"
                     step="0.05"

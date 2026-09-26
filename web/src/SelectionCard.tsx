@@ -53,7 +53,7 @@ export function SelectionCard({ edge, graph, run, conditions, onAddToCondition, 
             <dd>{fmt(base.hematocrit[edge])}</dd>
             {base.po2 && (
               <>
-                <dt>PO2 / SO2</dt>
+                <dt>PO₂ / SO₂</dt>
                 <dd>{fmt(base.po2[edge])} mmHg / {fmt(100 * (base.so2?.[edge] ?? NaN))}%</dd>
               </>
             )}

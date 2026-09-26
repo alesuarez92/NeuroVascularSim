@@ -7,9 +7,9 @@ const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : n
 
 /**
  * Oxygen from blood to tissue: blood enters through an arteriole at the
- * inlet PO2, gives off oxygen along the capillary and leaves through a
+ * inlet PO₂, gives off oxygen along the capillary and leaves through a
  * venule; oxygen released by hemoglobin diffuses through the wall into the
- * tissue, which consumes it (CMRO2). Tissue PO2 is solved on a voxel grid.
+ * tissue, which consumes it (CMRO₂). Tissue PO₂ is solved on a voxel grid.
  */
 export function OxygenFigure({ values = {}, highlight, onSelect, onHover }: Props) {
   const r = { highlight, onSelect, onHover };
@@ -21,16 +21,16 @@ export function OxygenFigure({ values = {}, highlight, onSelect, onHover }: Prop
   return (
     <Figure
       title="Oxygen transport"
-      desc="Blood flows from an arteriole through a capillary to a venule; PO2 and hemoglobin saturation fall along the way as oxygen diffuses into the tissue, which consumes it."
+      desc="Blood flows from an arteriole through a capillary to a venule; PO₂ and hemoglobin saturation fall along the way as oxygen diffuses into the tissue, which consumes it."
       viewBox="0 0 340 240"
     >
       <rect x={0} y={96} width={340} height={144} className="f-tissue" />
-      <Region id="inlet" label="Inlet blood: show the inlet PO2" {...r}>
+      <Region id="inlet" label="Inlet blood: show the inlet PO₂" {...r}>
         <rect x={4} y={16} width={100} height={78} rx={6} className="hit" />
         <line x1={10} x2={100} y1={72} y2={72} className="f-art-tube" style={{ strokeWidth: 14 }} />
         <text x={54} y={30} className="f-label f-art-text" textAnchor="middle">arteriole</text>
-        <text x={54} y={44} className="f-small" textAnchor="middle">PO2 {inlet ?? "…"} mmHg</text>
-        <text x={54} y={56} className="f-small" textAnchor="middle">SO2 {so2 === null ? "…" : `${Math.round(so2 * 100)}%`}</text>
+        <text x={54} y={44} className="f-small" textAnchor="middle">PO₂ {inlet ?? "…"} mmHg</text>
+        <text x={54} y={56} className="f-small" textAnchor="middle">SO₂ {so2 === null ? "…" : `${Math.round(so2 * 100)}%`}</text>
       </Region>
       <Region id="hemoglobin" label="Hemoglobin binding: show its parameters" {...r}>
         <rect x={106} y={16} width={128} height={78} rx={6} className="hit" />
@@ -45,7 +45,7 @@ export function OxygenFigure({ values = {}, highlight, onSelect, onHover }: Prop
       </Region>
       <line x1={240} x2={330} y1={72} y2={72} className="f-ven-tube" style={{ strokeWidth: 14 }} />
       <text x={286} y={30} className="f-label f-ven-text" textAnchor="middle">venule</text>
-      <text x={286} y={44} className="f-small" textAnchor="middle">lower PO2, SO2</text>
+      <text x={286} y={44} className="f-small" textAnchor="middle">lower PO₂, SO₂</text>
 
       <Region id="diffusion" label="Transport to tissue: show diffusion parameters" {...r}>
         <rect x={110} y={82} width={124} height={50} rx={6} className="hit" />
@@ -56,12 +56,12 @@ export function OxygenFigure({ values = {}, highlight, onSelect, onHover }: Prop
           </g>
         ))}
       </Region>
-      <Region id="tissue" label="Tissue consumption: show CMRO2 and related parameters" {...r}>
+      <Region id="tissue" label="Tissue consumption: show CMRO₂ and related parameters" {...r}>
         <rect x={20} y={138} width={214} height={96} rx={6} className="hit" />
         {[40, 90, 140, 190].map((x, i) => (
           <rect key={x} x={x} y={150 + (i % 2) * 12} width={34} height={24} rx={10} className="f-cell" />
         ))}
-        <text x={126} y={204} className="f-label" textAnchor="middle">tissue consumes O₂ (CMRO2)</text>
+        <text x={126} y={204} className="f-label" textAnchor="middle">tissue consumes O₂ (CMRO₂)</text>
         {cmro2 !== null && <text x={126} y={220} className="f-small" textAnchor="middle">{cmro2} µmol/g/min</text>}
       </Region>
       <Region id="numerics" label="Numerics: show grid and solver settings" {...r}>

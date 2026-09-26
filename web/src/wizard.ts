@@ -5,6 +5,7 @@
 // browser.
 
 import type { Condition, ExperimentSpec, ParamDoc, ParamDocs, Plugins } from "./api";
+import { formatNumber } from "./notation";
 import { paramLabel } from "./params";
 
 export const OTHER_GROUP = "Other";
@@ -30,6 +31,7 @@ export function resolveDoc(name: string, docs?: ParamDocs): { doc: ParamDoc; doc
         group: d.group || OTHER_GROUP,
         level: d.level === "advanced" ? "advanced" : "basic",
         source: d.source ?? "",
+        symbol: d.symbol ?? "",
       },
       documented: true,
     };
@@ -196,7 +198,7 @@ export const PRESETS: Preset[] = [
   },
   {
     id: "cmro2_l4",
-    label: "CMRO2 +10% in L4",
+    label: "CMRO₂ +10% in L4",
     description: "Oxygen consumption 10% higher in layer 4 only, vessels unchanged. Illustrative size, not from a paper.",
     needs: "oxygen",
     build: (ctx) => ({
@@ -260,7 +262,7 @@ export function checkSpec(spec: ExperimentSpec): Issue[] {
         if (!any) issues.push({ level: "error", message: `${name}: choose which vessels to scale (vessel type, layers, depth or edges).` });
       }
       if (p.name === "scale_cmro2" && spec.oxygen == null) {
-        issues.push({ level: "error", message: `${name}: a CMRO2 change needs the oxygen model (step 4).` });
+        issues.push({ level: "error", message: `${name}: a CMRO₂ change needs the oxygen model (step 4).` });
       }
       const r = q.depth_range_um;
       if (Array.isArray(r) && (r.length !== 2 || !(Number(r[0]) < Number(r[1])))) {
@@ -306,6 +308,7 @@ export function formatValue(v: unknown): string {
   if (Array.isArray(v)) return v.length ? v.join(", ") : "none";
   if (typeof v === "boolean") return v ? "on" : "off";
   if (typeof v === "string") return v.replace(/_/g, " ");
+  if (typeof v === "number") return formatNumber(v);
   return String(v);
 }
 

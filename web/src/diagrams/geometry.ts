@@ -98,7 +98,7 @@ export function cmro2Fill(factor: number): { color: string; opacity: number } {
   return { color: f > 1 ? "var(--increase)" : "var(--decrease)", opacity: clamp(0.15 + Math.abs(f - 1) * 1.7, 0.15, 0.85) };
 }
 
-/** Oxygen saturation of hemoglobin for a PO2 (Hill equation; p50 and n are the oxygen model's values, passed in). */
+/** Oxygen saturation of hemoglobin for a PO₂ (Hill equation; p50 and n are the oxygen model's values, passed in). */
 export function hillSaturation(po2: number, p50: number, n: number): number {
   const p = Math.max(finite(po2, 0), 0);
   const a = p ** n;
