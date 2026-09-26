@@ -126,13 +126,18 @@ DOCS[_S] = {
                   "outlet, sized by Murray's law.", "", _BC, "advanced",
                   f"{BLINDER_2013}; {SCHMID_2017}"),
     "p_in_mmhg": P("Arterial pressure", "Blood pressure at the arterial inflows. With the venous pressure it sets "
-                   "the pressure drop that drives flow through the column (50 mmHg by default).", "mmHg", _BC,
-                   "basic", BLINDER_2013 + " (50 mmHg arteriole-to-venule drop)"),
+                   "the pressure drop that drives flow through the column (34 mmHg by default). The default is "
+                   "calibrated so perfusion matches measured cortical CBF; no mouse pial pressure measurement was "
+                   "found.", "mmHg", _BC, "basic",
+                   "calibrated to CBF 90.1 ± 7.3 mL/100 g/min in awake C57BL/6 mice: Xu M et al. 2022, "
+                   "J Cereb Blood Flow Metab 42:811, doi:10.1177/0271678X211062279"),
     "p_out_mmhg": P("Venous pressure", "Blood pressure at the venous outflows (pial venules).", "mmHg", _BC,
                     "basic", SCHMID_2017),
     # Blood
     "hematocrit": P("Hematocrit", "Volume fraction of red cells in the blood entering the column. Higher values "
-                    "raise viscosity and oxygen-carrying capacity.", "", _BLOOD, "basic", ASSUMPTION),
+                    "raise viscosity and oxygen-carrying capacity.", "", _BLOOD, "basic",
+                    "median of adult C57BL/6J males: Mazzaccara C et al. 2008, PLoS One 3:e3772, "
+                    "doi:10.1371/journal.pone.0003772"),
     # Structural adaptation
     "structural_adaptation": P("Structural adaptation", "Adapt vessel diameters to equilibrium with shear stress, "
                                "pressure and a metabolic signal (Alberding & Secomb 2021 model) before solving. "
@@ -271,7 +276,9 @@ DOCS[_S] = {
     "nusselt": P("Nusselt number", "Sets the intravascular resistance to oxygen transfer through the vessel wall. "
                  "Higher values let oxygen leave the blood more easily.", "", _BOX, "advanced", ASSUMPTION),
     "cmro2_umol_per_g_min": P("CMRO2", "Maximal tissue oxygen consumption rate. Higher consumption lowers tissue "
-                              "and venous PO2.", "µmol/g/min", _TIS, "basic", SAKADZIC_2014),
+                              "and venous PO2.", "µmol/g/min", _TIS, "basic",
+                              "measured with 17O-MRS in mouse cortex: Zhu XH et al. 2013, NeuroImage 64:437, "
+                              "doi:10.1016/j.neuroimage.2012.09.028"),
     "km_mmhg": P("Michaelis-Menten Km", "Tissue PO2 at which consumption is half maximal; below it consumption "
                  "falls. Measured values in muscle are higher (5-10 mmHg; Golub & Pittman 2012).", "mmHg", _TIS,
                  "advanced", f"{GAGNON_2016}; {GOLUB_2012}"),

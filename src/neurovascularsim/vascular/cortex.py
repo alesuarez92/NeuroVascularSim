@@ -108,13 +108,20 @@ class MouseColumnParams:
     # 31:68, doi:10.1038/jcbfm.2010.158). 0 turns it off (the default for now).
     periarteriolar_free_radius_um: float = 0.0
     periarteriolar_free_depth_um: float = 552.0  # bottom of L4 (LAYER_BOUNDS_UM)
-    p_in_mmhg: float = 60.0
+    # Inlet pressure calibrated so perfusion matches the measured cortical CBF
+    # of awake C57BL/6 mice, 90.1 +/- 7.3 mL/100 g/min (Xu et al. 2022, J Cereb
+    # Blood Flow Metab 42:811, doi:10.1177/0271678X211062279): 91 (adaptation
+    # off) and 87 (on), seeds 0-3. No mouse pial pressure measurement was found.
+    # Outlet 10 mmHg: pial venule pressure of Schmid et al. 2017.
+    p_in_mmhg: float = 44.0
     p_out_mmhg: float = 10.0
     # "penetrating_tops": pressures fixed where arterioles and venules enter
     # the cortex (standard for cropped networks; Blinder et al. 2013, Schmid
     # et al. 2017). "pial_tree": one inlet and one outlet feeding pial trees.
     boundary: str = "penetrating_tops"
-    hematocrit: float = 0.45  # assumption: systemic value, not from a cited paper
+    # Systemic hematocrit of adult C57BL/6J males, median 41.5% (Mazzaccara et
+    # al. 2008, PLoS One 3:e3772, doi:10.1371/journal.pone.0003772).
+    hematocrit: float = 0.415
     seed: int = 0
     # Optional structural adaptation of diameters (vascular/adaptation.py;
     # Alberding & Secomb 2021). Off by default (owner's decision); the adapt_*

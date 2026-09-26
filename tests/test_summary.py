@@ -4,6 +4,7 @@ import pytest
 
 from neurovascularsim import registry
 from neurovascularsim.experiment import ExperimentSpec, run_experiment
+from neurovascularsim.vascular.cortex import MouseColumnParams
 from neurovascularsim.vascular.flow import solve_flow
 from neurovascularsim.vascular.summary import flow_summary
 
@@ -25,7 +26,7 @@ def test_column_inflow_is_the_flow_through_the_sources(solved):
     col = summarise(case, sol, "column")["column"]
     expected = sum(np.abs(sol.flow[(g.edges == n).any(axis=1)]).sum() for n in case.meta["sources"])
     assert col["inflow_nl_s"] == pytest.approx(expected * 1e12, rel=1e-9)
-    assert col["inlet_pressure_mean_mmhg"] == pytest.approx(60.0)
+    assert col["inlet_pressure_mean_mmhg"] == pytest.approx(MouseColumnParams().p_in_mmhg)
     assert col["outlet_pressure_mean_mmhg"] == pytest.approx(10.0)
 
 

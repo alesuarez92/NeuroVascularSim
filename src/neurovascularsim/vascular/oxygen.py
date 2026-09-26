@@ -47,7 +47,9 @@ class OxygenParams:
     inlet_po2_mmhg: float = 100.0  # pial arterioles (Sakadzic et al. 2014)
     p50_mmhg: float = 40.2  # C57BL/6 mice (Sakadzic et al. 2014)
     hill_n: float = 2.59  # C57BL/6 mice (Sakadzic et al. 2014)
-    cmro2_umol_per_g_min: float = 2.3  # Sakadzic et al. 2014 (model input matching their data)
+    # Measured with 17O-MRS in mouse cortex, 2.44 +/- 0.29 (Zhu et al. 2013,
+    # NeuroImage 64:437, doi:10.1016/j.neuroimage.2012.09.028).
+    cmro2_umol_per_g_min: float = 2.44
     # Michaelis-Menten constant, "usually assumed to be about 1 mmHg" (Gagnon et al. 2016,
     # doi:10.3389/fncom.2016.00082); measured closer to 5-10 mmHg in muscle (Golub & Pittman 2012,
     # doi:10.1152/ajpheart.00131.2012). Worth a sensitivity run.
